@@ -13,19 +13,39 @@
     <script src="popup.js"></script>
   </head>
   <body style="width: 600px; height: 400px;">
+    <h1>Browsing History</h1>
     <button id="btnShowHist">ShowHist</button>    
     <button id="btnSaveHist">SaveHist</button>    
-    <button id="btnListTabs">Tabs Info</button>
+    <button id="btnClear">ClearAll</button>    
     <table id="historyTable" border="1">
       <thead>
         <tr>
-          <th>##</th>       
-          <th width="120">Date and Time</th>
+          <th>##</th>
+          <th>Date and Time</th>
           <th>URL</th>
         </tr>
       </thead>
       <tbody>
       </tbody>
     </table>
+    <hr>
+    <h1>Opened Tabs</h1>
+    <button id="btnListTabs">Tabs Info</button>
+    <input  type="text"   id="searchString" name="srchStr" size="15">
+    <button type="button" id="searchButton" name="searchBtn">Search</button>
+
+<!--
+      <input type="button" id="searchButton" name="searchBtn">Search</input>
+    if (0) { // now created in popup.html
+      var searchButton = document.createElement('button');
+      searchButton.innerHTML = 'Search Tabs';
+      document.body.appendChild(searchButton);
+  }
+-->
+<!-- 
+  <label for="name">Name (4 to 8 characters):</label>
+  <input type="text" id="searchString" name="srchStr" required minlength="4" maxlength="8" size="10">
+-->    
+    <div id="tabsInfo"></div>
   </body>
 </html>
