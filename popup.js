@@ -246,7 +246,8 @@ document.addEventListener('DOMContentLoaded', function() {
           // console.log(page);
         });
 
-        var jsonData = JSON.stringify(data);
+        //var jsonData = JSON.stringify(data);
+        var jsonData = JSON.stringify(data, null, 2);
         var blob = new Blob([jsonData], {type: 'application/json'});
         var url = URL.createObjectURL(blob);
 
