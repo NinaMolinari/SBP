@@ -1,96 +1,247 @@
 // =================================================================
-// FILE:      popup.js
+// FILE:      popup.html
 // Copyright: Nina Molinari 2023 (c)
-//
-// PROJECT:   Smart Browser Plugin
-//            This is my small attempt to keep the "tabs" on the 
-//            time I spend working on differenct projects.
-//            There are a few good plugins out there that manage 
-//            browsing chaos -- I just need something that works for me...            
+// PROJECT:   Smart Links Browser Plugin
+//            I need a way to "keep tabs on my tabs" so to speak... ;-)
+//            So, hence, I am building this Tab/Links tracker/search.
 // =================================================================
 
-function fmtDate (date) {
-      const year    = date.getFullYear();
-      const month   = (date.getMonth() + 1).toString().padStart(2, '0');
-      const day     = date.getDate().toString().padStart(2, '0');
-      const hours   = date.getHours().toString().padStart(2, '0');
-      const minutes = date.getMinutes().toString().padStart(2, '0');
-      const seconds = date.getSeconds().toString().padStart(2, '0');
+var eBtnShowHist      = document.getElementById('btnShowHist');
+var eBtnSaveHist      = document.getElementById('btnSaveHist');
+var eBtnTabsInfo      = document.getElementById('btnListTabs');
+var eBtnClear         = document.getElementById('btnClear');
+var eBtnSearch        = document.getElementById('searchButton');
+var tableBody         = document.getElementById('tblSearchResults');
+var searchInput       = document.getElementById('searchString');
+var divSearchResults  = document.getElementById('div_SearchResults');
+var divSearchSummary  = document.getElementById('div_SearchSummary');
+var gSearchMode       = "mode_SearchTabs"; // (other optioons: mode_SearchFavs, mode_SearchHist)
+var bSupplINFO        = true;
+
+var gTotalOpenWindows = 0;
+var gTotalOpenTabs    = 0;
+var gMatchedTabs      = 0;
+
+function formatDate (date) {
+      nDate         = new Date(date);
+      const year    = nDate.getFullYear();
+      const month   = (nDate.getMonth() + 1).toString().padStart(2, '0');
+      const day     = nDate.getDate().toString().padStart(2, '0');
+      const hours   = nDate.getHours().toString().padStart(2, '0');
+      const minutes = nDate.getMinutes().toString().padStart(2, '0');
+      const seconds = nDate.getSeconds().toString().padStart(2, '0');
       return (`${year}.${month}.${day} ${hours}:${minutes}`);
 };
 
-document.addEventListener('DOMContentLoaded', function() {
-  //
-    var eBtnShowHist     = document.getElementById('btnShowHist');
-    var eBtnSaveHist     = document.getElementById('btnSaveHist');
-    var eBtnTabsInfo     = document.getElementById('btnListTabs');
-    var eBtnClear        = document.getElementById('btnClear');    
-    var tableBody        = document.getElementById('historyTable');     
-    var statsDiv         = document.getElementById('tabsInfo');
-    var searchInput      = document.getElementById('searchString');
-    var elSearchButton   = document.getElementById('searchButton');    
-    var bInitSearch      = true;
-    var _web_history     = [];
+// =================================================================
+// Clear Popup window from previously displayed information
+//
+function ClearAll() {
+  tableBody.innerHTML         = '';
+  divSearchResults.innerHTML  = '';
+  divSearchSummary.innerHTML  = ':';
+}
 
-    // elSearchButton.innerHTML = 'Search Tabs';
-    // =================================================================    
-    // Process "ClearAll" button click
-    // =================================================================
-    function ClearAll() {
+// =================================================================
+function _SelectSearchMode(search_mode) {
+    (search_mode == "mSearchTabs") && (gSearchMode="mode_SearchTabs");
+    (search_mode == "mSearchHist") && (gSearchMode="mode_SearchHist");
+    (search_mode == "mSearchFavs") && (gSearchMode="mode_SearchFavs");
+  // alert('Search Mode changed to :' + search_mode);
+    bSupplINFO == true && (divSearchSummary.innerHTML = (`INFO: Search Mode:<b> ${search_mode} </b>`));
+}
+
+// =================================================================
+function _PopupInitialize() {
+  _CollectTabsInfo();
+}
+
+// =================================================================
+// Updates Plugin icon with the current count of "Windows:Tabs"
+//
+function _UpdatePluginIcon() {
+  _CollectTabsInfo();
+}
+
+// =================================================================
+// Collects info on open browser Windows and Tabs and updates
+// Plugin Icons with the current count of "Windows:Tabs"
+// =================================================================
+function _CollectTabsInfo() {
+  chrome.windows.getAll({populate: true}, function(windows) {
+    win_count         = windows.length;
+    gTotalOpenWindows = windows.length;
+    total_tabs        = 0;
+    active_tabs       = 0;
+    tabs_count_string = '( ';
+
+    console.log ("Total Windows: " + windows.length);
+
+    windows.forEach( function(window) {
+        total_tabs += window.tabs.length;
+        console.log ("Active Tab Count: " + window.tabs.length);
+
+        if (window.focused) {
+          tabs_count_string += '<b>'+ window.tabs.length  + '</b> ; ';
+          console.log ("Active Tab Count: " + window.tabs.length);
+        }
+        else {
+          tabs_count_string += window.tabs.length + ' ; ';
+          console.log ("Inactive Window: " + window.tabs.length);
+        }
+        window.tabs.forEach(function(_tab) {
+          // chrome.runtime.sendMessage({command: "displayUrls", urls: urls});
+          // Collect detailed information about each tab here
+        });
+    }); // =====> end of windows.forEach()
+
+    gTotalOpenTabs = total_tabs;
+    tabs_count_string += " )";
+    chrome.action.setBadgeText({text: '' + `${win_count}:${total_tabs}`});
+    divSearchSummary.innerHTML = (`TABS: ${total_tabs} in ${win_count} Windows:  (${tabs_count_string})<br>`);
+  }); // =======> end of chrome.windows.getAll()
+}
+
+// =================================================================
+function _PerformSearch() {
+// =================================================================
+    (gSearchMode == "mode_SearchTabs") && _SearchTabs(searchInput.value);
+    (gSearchMode == "mode_SearchHist") && _SearchHist(searchInput.value);
+    (gSearchMode == "mode_SearchFavs") && _SearchFavs(searchInput.value);
+}
+
+// ==================================================
+function _SearchTabs(search_pattern) {
+// ==================================================
+    var tabUrls      = [];
+    var tabTitles    = [];
+    var nMatchedTabs = 0;
+
+    chrome.tabs.query({}, function(tabs) {
+
+      for (var i = 0; i < tabs.length; i++) {
+        // foundTabs.push(tabs[i]);
+        tabUrls.push  (tabs[i].url);
+        tabTitles.push(tabs[i].title);
+      }
+
+      var searchText    = search_pattern; //searchInput.value;
+      var matchingUrls  = [];
+      var matchingTabs  = [];
+      foundTabs         = [];
+
+      ClearAll();
+
+      bSupplINFO && (divSearchSummary.innerHTML = (`INFO: Search Mode:<b> ${gSearchMode} </b>`));
+
+      for (var i = 0; i < tabUrls.length; i++) {
+        // Search within URL strings
+        if (tabUrls[i].indexOf(searchText) !== -1) {
+          matchingUrls.push(tabUrls[i]);
+          matchingTabs.push(tabs[i]);
+          continue;
+        }
+        // Search within Tab titles
+        if (tabTitles[i].indexOf(searchText) !== -1) {
+          matchingUrls.push(tabUrls[i]);
+          matchingTabs.push(tabs[i]);
+        }
+      }
+
+      tCount = 0;
+
+      matchingTabs.forEach (function (mTab) {
+        tCount +=1 ;
+        var tr = document.createElement('tr');
+        // console.log( " original: " + tCount ":" +  mTab.title );
+        // console.log( ` original: ${tCount} :  ${mTab.title}` );
+        cTitle = mTab.title.replace(/</g,"&lt;");
+        tr.innerHTML = '<td> (' + tCount + ')</td><td width="400"><a href=' + mTab.url + '>[' + cTitle + ']</a></td>';
+        tableBody.appendChild(tr);
+      });
+      gMatchedTabs = matchingTabs.length;
+      divSearchSummary.innerHTML = (`INFO: ${gMatchedTabs} tabs matched out of ${tabs.length}`);
+  });
+}
+
+// ==================================================
+function _SearchHist(search_pattern) {
+// ==================================================
+  ClearAll();
+  var AllVisitedPages   = [];
+  var matchedPages      = [];
+  var matchedPageURLs   = [];
+  var matchedPageTitles = [];
+  var total_HistPages   = 0;
+
+  chrome.history.search( {text: '', startTime: 0, maxResults: 0}, function(visited_pages) {
+      // items => console.log(items));
       tableBody.innerHTML = '';
-      statsDiv.innerHTML  = '';      
-    }
+      total_HistPages     = visited_pages.length;
+      var current_count   = 0;
+      var displayTitle    = '';
+
+      visited_pages.forEach(function(page) {
+          // console.log(page);
+          var tr        = document.createElement('tr');
+          var date      = new Date(page.lastVisitTime);
+          //var time    = date.toLocaleString();
+          var time      = formatDate(date);
+          //var pUrl    = page.url;
+          //var pTitle  = page.title; // .substring(0, 80);
+          current_count += 1;
+
+          if ((page.url.indexOf(search_pattern) !== -1) || (page.title.indexOf(search_pattern) !== -1)) {
+              matchedPageURLs.push(page.url);
+              matchedPageTitles.push(page.title);
+              matchedPages.push({Url:page.url, Title: page.title});
+
+              displayTitle = ((page.title != '')? page.title:page.url).substring(0,78) ;
+
+              //tr.innerHTML = '<td width=10%>' + current_count + '</td><td width=30%>' + time + '</td><td=40%><a href='+page.url+'>'+ page.title + '</a></td>';
+              tr.innerHTML = '<td width=6%>' + current_count + '</td><td width=18%>' + time + '</td><td><a href='+page.url+'>'+ displayTitle + '</a></td>';
+
+              tableBody.appendChild(tr);
+          }
+      });
+
+      divSearchSummary.innerHTML = (`INFO: Total found: ${matchedPages.length} out of ${visited_pages.length} URLs visits in browsing history`);
+      console.log("Total Matched Hist Pages: " + matchedPages.length);
+  });
+} // end of function _SearchHist()
+
+// ===================================================================
+// Add neccessary listeners upon completeion of the popup page load
+// ===================================================================
+document.addEventListener('DOMContentLoaded', function() {
+    eBtnShowHist     = document.getElementById('btnShowHist');
+    eBtnSaveHist     = document.getElementById('btnSaveHist');
+    eBtnTabsInfo     = document.getElementById('btnListTabs');
+    eBtnClear        = document.getElementById('btnClear');
+    tableBody        = document.getElementById('tblSearchResults');
+    divSearchResults = document.getElementById('div_SearchResults');
+    searchInput      = document.getElementById('searchString');
+    eBtnSearch       = document.getElementById('searchButton');
+    divSearchSummary = document.getElementById('div_SearchSummary');
+    divSearchResults = document.getElementById('div_SearchResults');
+
     eBtnClear &&
-    eBtnClear.addEventListener('click', function() { 
+    eBtnClear.addEventListener('click', function() {
       ClearAll();
     });
 
-    // =================================================================    
-    // Process "ShowHist" button click
+    var radios = document.querySelectorAll('input[type=radio][name="Search_Option"]');
+    radios.forEach(radio => radio.addEventListener('change', () => _SelectSearchMode(radio.value)  ));
+    // alert(radio.value)
+
     // =================================================================
-    eBtnShowHist &&
-    eBtnShowHist.addEventListener('click', function() { 
-      if (0) { // this block is disabled and soon to be deleted
-          chrome.history.search({text: '', maxResults: 0}, function(data) {
-            var history = [];
-            for (var i = 0; i < data.length; i++) {
-                var date  = new Date(data[i].lastVisitTime);
-                var url   = data[i].url;
-                history.push({date: date, url: url});
-            }
-            var json = JSON.stringify(history);
-            console.log(json);
-          });
-      }
-
-      if (1) {
-          chrome.history.search( {text: '', maxResults: 0}, function(data) {            
-            tableBody.innerHTML = '';
-            var total_count = data.length;
-            var current_count = 0;
-            data.forEach(function(page) {
-              // console.log(page);
-              var tr = document.createElement('tr');
-              var date = new Date(page.lastVisitTime);
-              var time = date.toLocaleString();
-              var time = fmtDate(date);// time.substring(
-              var url = (page.url).substring(0, 80);
-              current_count += 1;
-              tr.innerHTML = '<td>' + current_count + '</td><td>' + time + '</td><td>' + url + '</td>';          
-              tableBody.appendChild(tr);
-            });
-          });
-      }
-    }); // end of eBtnShowHist.addEventListener()
-
-    // =================================================================    
     // Process "Save" button click
     // =================================================================
-    eBtnSaveHist && 
+    eBtnSaveHist &&
     eBtnSaveHist.addEventListener('click', function() {
-      chrome.history.search({text: '', maxResults: 0}, function(data) {
+      chrome.history.search({text: '', startTime: 0, maxResults: 0}, function(data) {
          // console.log(`data: ${data}` );
-        data.forEach(function(page) {       
+        data.forEach(function(page) {
           page.lastVisitTime = new Date(page.lastVisitTime).toLocaleString('en-US', { hour12: false, year: 'numeric', month: 'numeric', day: 'numeric', hour: '2-digit', minute:'2-digit' });
           // console.log(page);
         });
@@ -98,145 +249,56 @@ document.addEventListener('DOMContentLoaded', function() {
         var jsonData = JSON.stringify(data);
         var blob = new Blob([jsonData], {type: 'application/json'});
         var url = URL.createObjectURL(blob);
-  
-        chrome.downloads.download({
-          url: url,
-          filename: 'history.json',
-          saveAs: true
-        });
+
+        // Open "Save as" dialog window
+        chrome.downloads.download({ url: url, filename: 'Browsing_history.json', saveAs: true});
       });
     });
+
     // =================================================================
-    // Process "Tabs_info" button click
-    // =================================================================    
-    eBtnTabsInfo !== null &&
-    eBtnTabsInfo.addEventListener('click', function() {
-        // Collect info on all open windows and tabs
-        //  
-        chrome.windows.getAll({populate: true}, function(windows) {
-          win_count = windows.length;
-          total_tabs = 0;
-          active_tabs = 0;
-          tabs_count_string = '(';
-          //console.log ("Windows Count: " + win_count);
-          windows.forEach(function(window) {
-            total_tabs += window.tabs.length;
-            
-            if (window.focused) {
-              active_tabs = window.tabs.length;
-              console.log ("Active Tab Count: " + active_tabs);
-            }
-            else {
-              tabs_count_string += window.tabs.length + ' + ';
-              //console.log ("Inactive Tab Count: " + total_tabs);// windows.length);
-              console.log ("Inactive Window: " + window.tabs.length); // windows.length);            
-            }
-            window.tabs.forEach(function(_tab) {
-              // chrome.runtime.sendMessage({command: "displayUrls", urls: urls});
-              // Collect information about each tab here
-            });
-          }); // =====> end of windows.forEach()
-          tabs_count_string += ")";
-          chrome.action.setBadgeText({text: '' + `${win_count}:${total_tabs}`});
-        }); // =======> end of chrome.windows.getAll()
+    // Add Event Listeners to "Search" button
+    // =================================================================
+    searchInput.addEventListener('keydown', function(event) { // originally 'keyup'
+      if ((event.code === "Enter") || (event.code === "NumpadEnter")) {
+        // if (event.keyCode === 13) { // Deprecated property: "keyCode" replaced
+        // _SearchTabs(searchInput.value);
+        _PerformSearch(searchInput.value);
+      }
+    });
 
-        // =================================================================
-        chrome.tabs.query({}, function(tabs) {
-          var tabUrls   = [];
-          var tabTitles = [];
-          var foundTabs = [];
-          var allTabs   = tabs;
-          for (var i = 0; i < tabs.length; i++) {
-            // foundTabs.push(tabs[i]);
-            tabUrls.push(tabs[i].url);
-            tabTitles.push(tabs[i].title);
-          }
-          // console.log(tabUrls);
+    eBtnSearch.addEventListener('click', function() {
+        // _SearchTabs(searchInput.value);
+        _PerformSearch(searchInput.value);
+    });
 
-          // var statsDiv = document.createElement('div');
-          // document.body.appendChild(statsDiv);
-          // "tabsInfo"
-
-          statsDiv.innerHTML = (`Windows: ${win_count} // Tabs: ${total_tabs}:${tabs_count_string} <br>`); 
-
-          // var searchInput = document.createElement('input');
-          // searchInput.type = 'text';
-          // document.body.appendChild(searchInput);
-        
-          if (0) { // now created in popup.html
-              var searchButton = document.createElement('button');
-              searchButton.innerHTML = 'Search Tabs';
-              document.body.appendChild(searchButton);
-          }
-          var resultsDiv = document.createElement('div');
-          document.body.appendChild(resultsDiv);
-
-          // =================================================================
-          // Search within open tabs
-          // ================================================================= 
-          function performSearch() {
-            var searchText    = searchInput.value;
-            var matchingUrls  = [];
-            var matchingTabs  = [];        
-            foundTabs         = [];
-
-            ClearAll();
-            for (var i = 0; i < tabUrls.length; i++) {
-              // Search within URL strings
-              if (tabUrls[i].indexOf(searchText) !== -1) {
-                matchingUrls.push(tabUrls[i]);
-                matchingTabs.push(tabs[i]);
-                continue;
-              }
-              // Search within Tab titles
-              if (tabTitles[i].indexOf(searchText) !== -1) {
-                matchingUrls.push(tabUrls[i]);
-                matchingTabs.push(tabs[i]);                
-              }
-            }
-            // console.log(matchingUrls);
-
-            // Block removed: see [3]
-            // See [2], for details on fTab elements and properties
-
-            //@here : SUN 4/23 13:08
-            if (1) {
-              // originally: resultsDiv.innerHTML = matchingUrls.join('<br>');
-                 tCount = 0;
-                 // var cTile = "";
-                 matchingTabs.forEach (function (mTab) {
-                    tCount +=1 ;
-                    var tr = document.createElement('tr');
-                    // console.log( " original: " + tCount ":" +  mTab.title );
-                    // console.log( ` original: ${tCount} :  ${mTab.title}` );                    
-                    cTitle = mTab.title.replace(/</g,"&lt;");
-                    //string = string.replace(/</g, "&lt;").replace(/>/g, "&gt;");
-                    // console.log( ` replaced: ${tCount} :  ${cTitle}` );
-                    // string.replace(/="[^"]+"/g,function($0){return $0.replace(/&lt;/g,"<").replace(/&gt;/g,">");})
-                    tr.innerHTML = '<td> (' + tCount + ')</td><td width="600"><a href=' + mTab.url + '>[' + cTitle + ']</a></td>';
-                    //resultsDiv.appendChild(tr);
-                    statsDiv.appendChild(tr);
-                 });
-            }
-          } // end of function performSearch()
-          
-          searchInput.addEventListener('keydown', function(event) { // originally 'keyup'
-            if ((event.code === "Enter") || (event.code === "NumpadEnter")) {
-              // if (event.keyCode === 13) { // Deprecated property: keyCode     
-              performSearch();
-            }
-          });
-        
-          elSearchButton.addEventListener('click', function() {
-              performSearch();
-          });
-        }); // End of chrome.tabs.query() - done collecting and processing all tabs
-    }); // End of eBtnTabsInfo.addEventListener('click'...)
+    _PopupInitialize();
 });
 
-/*  
+
+chrome.tabs.onCreated.addListener(function(tab) {
+  var startTime = Date.now(); // new Date().getTime();
+
+  // Store the start time in the tab's data object
+  // Line 243: chrome.tabs.update(tab.id, { data: { startTime: startTime } });
+  /*
+    ERROR:
+    Error in event handler: TypeError: Error in invocation of tabs.update(optional integer tabId,
+    object updateProperties, optional function callback):
+    Error at parameter 'updateProperties': Unexpected property: 'data'.
+    at chrome-extension://pikbbjcfacedhhkhgajpnbblgmgbnhfo/popup.js:243:15
+    >
+    REFERENCE: https://developer.chrome.com/docs/extensions/reference/tabs/
+  */
+  console.log("New tab opened on: " + formatDate(startTime)) ;//tab.id );
+  //
+  // Error in event handler: TypeError: Cannot read properties of undefined (reading 'startTime')
+  // at chrome-extension://pikbbjcfacedhhkhgajpnbblgmgbnhfo/popup.js:256:48
+  //
+});
+
+/*
 // ====================== ADDENDUM =================
-[1] : Structure of "data" object in Browsing history
+[1] : Structure of a "data" object in Browsing history
 
       // {
       //    id:             "2512"
@@ -247,7 +309,7 @@ document.addEventListener('DOMContentLoaded', function() {
       //    visitCount:     1
       // }
 
-[2] : Structure of "fTab" object for Browser window Tab
+[2] : Structure of a "tab" object for a Browser's Tab
 
         favIconUrl: "https://www.cbsnews.com/fly/bundles/cbsnewscore/icons/icon.svg?v=7976be32c7718021a8332cee4eb15ac6"
         id:         842656694
@@ -258,36 +320,14 @@ document.addEventListener('DOMContentLoaded', function() {
         url:        "https://www.cbsnews.com/sanfrancisco/news/fatal-stabbing-bob-lee-mobile-coin-san-francisco-main-street-rincon-hill/"
         windowId:   842656676
 
-[3] : Removed block
-
-        data.forEach(function(page) {
-          console.log(page);
-          var tr = document.createElement('tr');
-          var date = new Date(page.lastVisitTime);
-          var time = date.toLocaleString();
-          var time = fmtDate(date);// time.substring(
-          var url = (page.url).substring(0, 80);
-          current_count += 1;
-          //tr.innerHTML = `<td>${current_count}</td><td width="200">${time}</td><td>${url}</td>`;
-          // tr.innerHTML = '<td>' + time + '</td><td>' + url + '</td>';
-          tr.innerHTML = '<td>' + current_count + '</td><td width="800">' + time + '</td><td>' + url + '</td>';          
-          tableBody.appendChild(tr);
-        });
-
-[4] : html : search input string
-      <!-- 
-        <label for="name">Name (4 to 8 characters):</label>
-        <input type="text" id="searchString" name="srchStr" required minlength="4" maxlength="8" size="10">
-      -->
-
-[5] : Web links not opening from popup window
+[5] : Web links not opening from popup window (--> update manifest for permissions)
 Not allowed to load local resource: chrome://newtab/
-serviceworker.js:117 [...5ca7af4b98465ab821c5a15d75ef1152] fetching navigation request 
-   https://... 
-   FetchEvent {isTrusted: true, 
-                request: Request, 
-                clientId: '', 
-                resultingClientId: '2eb27fa1-bec5-4d19-8a42-1ee1774066e0', 
+serviceworker.js:117 [...5ca7af4b98465ab821c5a15d75ef1152] fetching navigation request
+   https://...
+   FetchEvent {isTrusted: true,
+                request: Request,
+                clientId: '',
+                resultingClientId: '2eb27fa1-bec5-4d19-8a42-1ee1774066e0',
                 isReload: false, 
                 …}
 

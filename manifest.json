@@ -1,7 +1,7 @@
 {
     "manifest_version": 3,
     "name":             "Browser History Extension",
-    "version":          "1.10",
+    "version":          "1.11",
     "description":      "Displays and saves browsing history",
     "action": {
       "default_popup":  "popup.html",
