@@ -1,7 +1,7 @@
 // =================================================================
 // FILE:      popup.html
 // Copyright: Nina Molinari 2023 (c)
-// PROJECT:   Smart Links Browser Plugin
+// PROJECT:   "Smart Links" Browser Plugin
 //            I need a way to "keep tabs on my tabs" so to speak... ;-)
 //            So, hence, I am building this Tab/Links tracker/search.
 // =================================================================
@@ -15,12 +15,24 @@ var tableBody         = document.getElementById('tblSearchResults');
 var searchInput       = document.getElementById('searchString');
 var divSearchResults  = document.getElementById('div_SearchResults');
 var divSearchSummary  = document.getElementById('div_SearchSummary');
-var gSearchMode       = "mode_SearchTabs"; // (other optioons: mode_SearchFavs, mode_SearchHist)
-var bSupplINFO        = true;
 
+// 	[https://workona.com/0/iwycb1/misc-01]
+
+var gSearchMode       = "mode_SearchTabs"; // (other optioons: mode_SearchFavs, mode_SearchHist)
+var gLinkDisplayMode  = "mode_Display_TITLE";
+var gInfoDisplayStr   = "INFO: ";
+var gTabsCountString  = "";
 var gTotalOpenWindows = 0;
 var gTotalOpenTabs    = 0;
 var gMatchedTabs      = 0;
+var bSupplINFO        = true;
+
+/*
+<input type="radio" id="dispURL" name="URLvsTITLE" value="mdURL">
+<label >URL</label>
+<input checked type="radio" id="dispTITLE" name="URLvsTITLE" value="mdTITLE" >
+<label >Title</label>
+*/
 
 function formatDate (date) {
       nDate         = new Date(date);
@@ -51,9 +63,16 @@ function _SelectSearchMode(search_mode) {
     bSupplINFO == true && (divSearchSummary.innerHTML = (`INFO: Search Mode:<b> ${search_mode} </b>`));
 }
 
+function _SelectLinkDisplayhMode(display_mode) {
+  (display_mode == "mDisplayURL") && (gLinkDisplayMode="mode_Display_URL");
+  (display_mode == "mDisplayTITLE") && (gLinkDisplayMode="mode_Display_TITLE");
+  (bSupplINFO == true) && (divSearchSummary.innerHTML = (`INFO: Display Mode:<b> ${display_mode} </b>`));
+}
+
 // =================================================================
 function _PopupInitialize() {
   _CollectTabsInfo();
+  chrome.action.setBadgeText({text: '' + `${gTotalOpenWindows}:${gTotalOpenTabs}`});
 }
 
 // =================================================================
@@ -61,6 +80,7 @@ function _PopupInitialize() {
 //
 function _UpdatePluginIcon() {
   _CollectTabsInfo();
+  chrome.action.setBadgeText({text: '' + `${gTotalOpenWindows}:${gTotalOpenTabs}`});
 }
 
 // =================================================================
@@ -69,7 +89,6 @@ function _UpdatePluginIcon() {
 // =================================================================
 function _CollectTabsInfo() {
   chrome.windows.getAll({populate: true}, function(windows) {
-    win_count         = windows.length;
     gTotalOpenWindows = windows.length;
     total_tabs        = 0;
     active_tabs       = 0;
@@ -79,15 +98,14 @@ function _CollectTabsInfo() {
 
     windows.forEach( function(window) {
         total_tabs += window.tabs.length;
-        console.log ("Active Tab Count: " + window.tabs.length);
 
         if (window.focused) {
           tabs_count_string += '<b>'+ window.tabs.length  + '</b> ; ';
-          console.log ("Active Tab Count: " + window.tabs.length);
+          console.log ("Tabs in Focused Window: " + window.tabs.length);
         }
         else {
           tabs_count_string += window.tabs.length + ' ; ';
-          console.log ("Inactive Window: " + window.tabs.length);
+          console.log ("Tabs in UnFocused Window: " + window.tabs.length);
         }
         window.tabs.forEach(function(_tab) {
           // chrome.runtime.sendMessage({command: "displayUrls", urls: urls});
@@ -97,8 +115,10 @@ function _CollectTabsInfo() {
 
     gTotalOpenTabs = total_tabs;
     tabs_count_string += " )";
-    chrome.action.setBadgeText({text: '' + `${win_count}:${total_tabs}`});
-    divSearchSummary.innerHTML = (`TABS: ${total_tabs} in ${win_count} Windows:  (${tabs_count_string})<br>`);
+    gTabsCountString = tabs_count_string;
+
+    chrome.action.setBadgeText({text: '' + `${gTotalOpenWindows}:${gTotalOpenTabs}`});
+    divSearchSummary.innerHTML = (`TABS: ${gTotalOpenTabs} in ${gTotalOpenWindows} Windows:  (${gTabsCountString})<br>`);
   }); // =======> end of chrome.windows.getAll()
 }
 
@@ -149,6 +169,7 @@ function _SearchTabs(search_pattern) {
       }
 
       tCount = 0;
+      linkText = '';
 
       matchingTabs.forEach (function (mTab) {
         tCount +=1 ;
@@ -156,7 +177,12 @@ function _SearchTabs(search_pattern) {
         // console.log( " original: " + tCount ":" +  mTab.title );
         // console.log( ` original: ${tCount} :  ${mTab.title}` );
         cTitle = mTab.title.replace(/</g,"&lt;");
-        tr.innerHTML = '<td> (' + tCount + ')</td><td width="400"><a href=' + mTab.url + '>[' + cTitle + ']</a></td>';
+        if (gLinkDisplayMode == 'mode_Display_TITLE') {
+          linkText = cTitle;
+        }else{
+          linkText = mTab.url.substring(0,78) ;
+        }
+        tr.innerHTML = '<td> (' + tCount + ')</td><td width="400"><a href=' + mTab.url + '>[' + linkText + ']</a></td>';
         tableBody.appendChild(tr);
       });
       gMatchedTabs = matchingTabs.length;
@@ -179,7 +205,7 @@ function _SearchHist(search_pattern) {
       tableBody.innerHTML = '';
       total_HistPages     = visited_pages.length;
       var current_count   = 0;
-      var displayTitle    = '';
+      var linkText        = '';
 
       visited_pages.forEach(function(page) {
           // console.log(page);
@@ -196,10 +222,10 @@ function _SearchHist(search_pattern) {
               matchedPageTitles.push(page.title);
               matchedPages.push({Url:page.url, Title: page.title});
 
-              displayTitle = ((page.title != '')? page.title:page.url).substring(0,78) ;
+              linkText = ((page.title != '')? page.title:page.url).substring(0,78) ;
 
               //tr.innerHTML = '<td width=10%>' + current_count + '</td><td width=30%>' + time + '</td><td=40%><a href='+page.url+'>'+ page.title + '</a></td>';
-              tr.innerHTML = '<td width=6%>' + current_count + '</td><td width=18%>' + time + '</td><td><a href='+page.url+'>'+ displayTitle + '</a></td>';
+              tr.innerHTML = '<td width=6%>' + current_count + '</td><td width=18%>' + time + '</td><td><a href='+page.url+'>'+ linkText + '</a></td>';
 
               tableBody.appendChild(tr);
           }
@@ -225,6 +251,8 @@ document.addEventListener('DOMContentLoaded', function() {
     divSearchSummary = document.getElementById('div_SearchSummary');
     divSearchResults = document.getElementById('div_SearchResults');
 
+    // _PopupInitialize();
+
     eBtnClear &&
     eBtnClear.addEventListener('click', function() {
       ClearAll();
@@ -233,6 +261,9 @@ document.addEventListener('DOMContentLoaded', function() {
     var radios = document.querySelectorAll('input[type=radio][name="Search_Option"]');
     radios.forEach(radio => radio.addEventListener('change', () => _SelectSearchMode(radio.value)  ));
     // alert(radio.value)
+
+    var radios = document.querySelectorAll('input[type=radio][name="URLvsTITLE"]');
+    radios.forEach(radio => radio.addEventListener('change', () => _SelectLinkDisplayhMode(radio.value)  ));
 
     // =================================================================
     // Process "Save" button click
@@ -290,6 +321,7 @@ chrome.tabs.onCreated.addListener(function(tab) {
     >
     REFERENCE: https://developer.chrome.com/docs/extensions/reference/tabs/
   */
+  _UpdatePluginIcon();
   console.log("New tab opened on: " + formatDate(startTime)) ;//tab.id );
   //
   // Error in event handler: TypeError: Cannot read properties of undefined (reading 'startTime')
