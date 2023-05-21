@@ -22,9 +22,11 @@
           <input disabled type="radio" id="bSearchFavorites" name="Search_Option" value="mSearchFavs" >
                 <label > Favorites</label> <br>
           <input type="radio" id="bSearchHist" name="Search_Option" value="mSearchHist" >
-                <label > History</label> <br>
-          <input disabled type="radio" id="bSearchAll" name="Search_Option" value="mSearchAll">
-                <label > All</label>
+                <label > Web History</label> <br>
+          <input type="radio" id="bSearchTasks" name="Search_Option" value="mSearchTasks" >
+                <label > Tasks</label> <br>
+          <input disabled type="radio" id="bSearchTags" name="Search_Option" value="mSearchTags">
+                <label > Tags</label>
         </div>
         <div class="filter-div set2">
           <!-- ================================================================================== -->
@@ -41,9 +43,23 @@
         </div>
          <!-- ================================================================================== -->
         <div class="section-div set1">
-          <center><h3> "Smart Links" (ver 1.12)</h3></center>
-          Work in progress...<br>
-          Copywright 2023 &copy; Nina Molinari
+            <input type="text" id="task-name-input" placeholder="Enter task name"><br>
+            <span id="timer" class="timer">00:00:00</span><br>
+            <!-- <font size=5><b></b></font> -->
+            <button id="btnTimerStart">start</button>
+            <button id="btnTimerPause">pause</button>
+            <button id="btnTimerResume">resume</button>
+            <button id="btnTimerEnd">end</button>
+
+            <!--
+            const taskNameInput = document.getElementById('task-name-input');
+            const startButton = document.getElementById('start-button');
+            const pauseButton = document.getElementById('pause-button');
+            const resumeButton = document.getElementById('resume-button');
+            const taskList = document.getElementById('task-list');
+            const stopButton = document.getElementById('stop-button');
+            -->
+
           <!-- ================================================================================== -->
         </div>
         <br>
@@ -51,15 +67,17 @@
           <!-- ================================================================================== -->
           <input  type="text"   id="searchString" name="srchStr" class="input_search_str">
           <!-- size="15" class="input_dateStr -->
-          <button type="button" id="searchButton" name="searchBtn">Search</button>
+          <!-- button type="button" id="btnSearch" name="searchBtn">Search</button -->
+          <button id="btnSearch">Search</button>
           <button id="btnClear">Clear</button>
-          <button id="btnSaveHist">SaveAllHist</button>
-
+          <button id="btnSave">Save</button>
+          <button id="btnLoad">Load</button>
         </div>
   </div>
   <hr>
   <!-- ================================================================================== -->
     <div id="div_SearchSummary">:</div>
+    <div id="task-list"></div>
     <hr>
     <div id="div_SearchResults"></div>
     <div> <table id="tblSearchResults" ><tbody> </tbody> </table> </div>

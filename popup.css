@@ -9,6 +9,11 @@ h1 {
     margin-left: 20px;
 }
 
+.timer {
+    font-size: 26px;
+    /* font-weight: 500; */
+}
+
 .filter-div {
     display: inline-block;
     vertical-align: top;
@@ -16,12 +21,11 @@ h1 {
     border-radius: 6px;
     padding: 5px;
     margin: 5px;
-    height: 80px;
+    height: 100px;
 }
 .filter-div.set1 {
     float: left;
     width: 15%; /* 45% */
-
 }
 .filter-div.set2 {
     float: right;
@@ -35,7 +39,7 @@ h1 {
     padding: 5px;
     margin: 5px;
     width: 48%; /* 45% */
-    height: 80px;
+    height: 100px;
 }
 /*----------------------------------------------------------------
 .section-div.set1 {
@@ -86,6 +90,13 @@ input[type="submit"]:hover {
     background-color: #45a049;
 }
 
+
+.task_link {
+        color:blue;
+        text-decoration:underline;
+        cursor:pointer;
+        font-family: monospace, 'Courier New', Courier;
+}
 /*
 td:nth-child(2) { width: 20%; }
 td:nth-child(3) { width: 40%; } */
