@@ -6,8 +6,8 @@
 //
 // PROJECT:     "Keeping Tabs" Browser Plugin
 //              (originally named "Smart Links")
-//              I need a way to "keep tabs" on my tasks and work time spent in browser.
-//              So, hence, I am building this Tasks/Taba/Links tracker.
+//              I need a way to "keep tabs" on my tasks and work time, web resources, etc.
+//              So, hence, I am building my own Tasks/Tabs/Links tracker.
 //
 // VERSION:     00.01.12
 //
@@ -15,18 +15,18 @@
 //              - Initial stab for working with tasks and timers
 //
 // TODO:
-//              - add option to save open tabs
-//              - finish running timer resumption on extension popup.
-//              - select task for continuation
-//              - select task for changing status to "completed"
-//              - implemet "change status of task to completed"
-//              - Search in tasks
-//              - Save / Load tasks
-//              - Save / Load tabs
-//              - Save / Load favorites
-//              - Load file with custom browsing history
-//              - ...
-//              - data storage for subscribers
+//              -       add option to save open tabs
+//              -       finish running timer resumption on extension popup.
+//              -  100% select task for continuation
+//              -       select task for changing status to "completed"
+//              -       implemet "change status of task to completed"
+//              -       Search in tasks
+//              -       Save / Load tasks
+//              -       Save / Load tabs
+//              -       Save / Load favorites
+//              -       Load file with custom browsing history
+//              -       ...
+//              -       data storage for subscribers
 // =================================================================
 */
 // DOM elements
