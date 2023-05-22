@@ -1,6 +1,6 @@
 {
     "manifest_version": 3,
-    "name":             "Smart Links",
+    "name":             "Keeping Tabs",
     "version":          "1.12",
     "description":      "Manages URL links",
     "action": {

@@ -9,7 +9,7 @@
 //              I need a way to "keep tabs" on my tasks and work time spent in browser.
 //              So, hence, I am building this Tasks/Taba/Links tracker.
 //
-// VERSION:     v 1.12
+// VERSION:     00.01.12
 //
 // IMPLEMENTED:
 //              - Initial stab for working with tasks and timers
@@ -24,33 +24,35 @@
 //              - Save / Load tabs
 //              - Save / Load favorites
 //              - Load file with custom browsing history
-//              -
+//              - ...
 //              - data storage for subscribers
 // =================================================================
 */
 // DOM elements
 
+// Search block
 var eBtnSearch        = document.getElementById('btnSearch');
 var eBtnClear         = document.getElementById('btnClear');
 var eBtnSave          = document.getElementById('btnSave');
 var eBtnLoad          = document.getElementById('btnLoad');
 
+// Task timer block
+var taskNameInput     = document.getElementById('task-name-input');
+var timerElement      = document.getElementById('timer');
 var eBtnTimerStart    = document.getElementById('btnTimerStart');
 var eBtnTimerPause    = document.getElementById('btnTimerPause');
 var eBtnTimerResume   = document.getElementById('btnTimerPause');
 var eBtnTimerEnd      = document.getElementById('btnTimerEnd');
 
-
-
 var taskList          = document.getElementById('task-list');
 
+// Search block
 var tableBody         = document.getElementById('tblSearchResults');
 var searchInput       = document.getElementById('searchString');
 var divSearchResults  = document.getElementById('div_SearchResults');
 var divSearchSummary  = document.getElementById('div_SearchSummary');
 
-var taskNameInput     = document.getElementById('task-name-input');
-var timerElement      = document.getElementById('timer');
+// Local vars
 
 let myTasks           = [];     // Array to store task data objects
 let activeTask        = null;   // Currently active task
@@ -59,14 +61,14 @@ let gStartTime;
 
 var gSearchMode       = "mode_SearchTabs"; // (other optioons: mode_SearchFavs, mode_SearchHist, ...)
 var gLinkDisplayMode  = "mode_Display_TITLE";
+var gTimerTask        = "";
+var gTimerState       = "timer_stopped";// "timer_paused"; "timer_running";
 var gInfoDisplayStr   = "INFO: ";
 var gTabsCountString  = "";
 var gTotalOpenWindows = 0;
 var gTotalOpenTabs    = 0;
 var gMatchedTabs      = 0;
 var bSupplINFO        = true;
-var gTimerTask        = "";
-var gTimerState       = "timer_stopped";// "timer_paused"; "timer_running";
 
 // ========================================================================
 function formatDate (date) {
@@ -584,7 +586,7 @@ function pauseTimer() {
 // ========================================================================
 function resumeTimer() {
 
-  if (activeTask && (activeTask.state == 'paused') ) {
+  if (activeTask && ((activeTask.state == 'paused') || (activeTask.state == 'stopped')) ) {
     // Calculate pause duration
     // const pauseDuration = Date.now() - activeTask.endTime;
 
@@ -625,6 +627,8 @@ function updateTimer() {
   if (activeTask) {
     const currentTime = Date.now();
 
+    //taskNameInput.value = activeTask.name;
+
     if (activeTask.state === 'running') {
       newElapsedTime = (currentTime - activeTask.startTime);
     }
@@ -657,9 +661,7 @@ function stopTimer() {
     }
     // Update UI
     eBtnTimerStart.disabled  = false;
-    eBtnTimerPause.disabled  = true;
-    eBtnTimerResume.disabled = true;
-    eBtnTimerEnd.disabled    = true;
+    eBtnTimerPause.disabled  = eBtnTimerResume.disabled = eBtnTimerEnd.disabled =true;
     // Render the task list
     renderTaskList();
     console.log(`Task:${activeTask}`);
@@ -695,10 +697,12 @@ function renderTaskList() {
 
     // Style the taskItem div element via css properties using class name
     taskItem.className = 'task_link';
-
+    taskItem.setAttribute("id", task.id );
     taskItem.addEventListener('click', function handleClick(event) {
-      console.log('Task div element clicked 🎉🎉🎉', event);
-      alert('task clicked');
+      //_openTaskDetailsPopup(task);
+      console.log('Task div element was clicked 🎉🎉🎉', event);
+      // if ( confirm(confirmationText)) {
+      _selectContinueTask(event.target.id);
     });
 
     taskItem.textContent = `${tTime}: [${eTime}] : (${(task.state).padEnd(8,"_")}) : ${task.name}`;
@@ -706,6 +710,78 @@ function renderTaskList() {
     // taskList.appendChild(taskItem);
     tableBody.appendChild(taskItem);
   });
+}
+
+
+// ========================================================================
+// Function to prepare timer for continued time tracking for a selected task
+// ========================================================================
+function _selectContinueTask (task_ID) {
+
+    var selectedTask = null;
+
+    // bad: // selectedTask = myTasks.find(task_ID == task_ID);
+    // const result = inventory.find(({ name }) => name === "cherries");
+    myTasks.forEach((task) => {
+      if (task.id === task_ID) {
+          activeTask = selectedTask = task;
+          //continue; Uncaught SyntaxError: Illegal continue statement: no surrounding iteration statement
+      }
+    });
+
+    var infoText = "";
+    infoText += `selectedTask: ${selectedTask.name} <br>`;
+    infoText += `time spent so far: ${selectedTask.elapsedTime} ms`;
+    bSupplINFO && (divSearchSummary.innerHTML = (infoText));
+
+
+    taskNameInput.value = activeTask.name;
+    updateTimer(activeTask);
+    _setTimerControls(activeTask);
+}
+
+function _setTimerControls (task) {
+  // if task.state === 'running' || task.state === '
+  switch (task.state) {
+    case "running":
+      eBtnTimerStart.disabled  = eBtnTimerResume.disabled = true;
+      eBtnTimerPause.disabled  = eBtnTimerEnd.disabled = false;
+      break;
+    case "paused":
+      eBtnTimerStart.disabled  = eBtnTimerPause.disabled = true;
+      eBtnTimerResume.disabled = eBtnTimerEnd.disabled = false;
+      break;
+    case "stopped":
+    case "planned":
+      eBtnTimerStart.disabled  = eBtnTimerPause.disabled = eBtnTimerEnd.disabled = true;
+      eBtnTimerResume.disabled = false;
+      break;
+  }
+}
+
+
+// ========================================================================
+// Function to open additinoal popup window
+// ========================================================================
+function _openTaskDetailsPopup(task) {
+  //  chrome.browserAction.onClicked.addListener(function() {
+    var w = 440;
+    var h = 220;
+    var left ,top;
+    //var left = (screen.width/2)-(w/2);
+    //var top = (screen.height/2)-(h/2);
+
+    chrome.windows.create(
+      {
+      'url': 'task_detail.html',
+      'type': 'popup',
+      'width': w,
+      'height': h,
+      //'left': left,      'top': top
+      },
+      function(window) {}
+    );
+  // chrome.browserAction.onClicked.addListener(function() {});
 }
 
 // ========================================================================
