@@ -15,6 +15,7 @@
 //              - Initial stab for working with tasks and timers
 //
 // TODO:
+//              - add option to save open tabs
 //              - finish running timer resumption on extension popup.
 //              - select task for continuation
 //              - select task for changing status to "completed"
@@ -115,8 +116,8 @@ function _SelectSearchMode(search_mode) {
         break;
       case "mSearchTasks":
         gSearchMode="mode_SearchTasks";
-        eBtnSearch.disabled = eBtnClear.disabled  = false;
-        eBtnSave.disabled   = eBtnLoad.disabled   = true;
+        eBtnSearch.disabled = eBtnClear.disabled  = eBtnSave.disabled = false;
+        eBtnLoad.disabled   = true;
         break;
       case "mSearchTags":
         gSearchMode="mode_SearchTags";
@@ -331,7 +332,15 @@ function _SearchTasks(){
 // ========================================================================
 function _Save() {
   // ========================================================================
-  _SaveHistory();
+  switch (gSearchMode) {
+    case "mode_SearchTasks":
+      _saveTasksToFile();
+      break;
+    case "mode_SearchHist":
+      _SaveHistory();
+      break;
+  }
+ // _SaveHistory();
   console.log("Fn(_Save): Saving data...");
 }
 
@@ -354,6 +363,37 @@ function _SaveHistory() {
    chrome.downloads.download({ url: url, filename: 'Browsing_history.json', saveAs: true});
  });
 }
+
+//   // myTasks.array.forEach(element => {
+
+// ========================================================================
+// Function to save tasks data to a file in JSON format
+// ========================================================================
+function _saveTasksToFile() {
+  // Convert tasks array to JSON string
+  const jsonData = JSON.stringify(myTasks, null, 2); // Use null and 2 for pretty-printing
+
+  // Create a blob with the JSON data
+  const blob = new Blob([jsonData], { type: 'application/json' });
+
+  // Generate a unique filename
+  const filename = 'tasks_' + Date.now() + '.json';
+
+  // Create a URL for the blob
+  const blobUrl = URL.createObjectURL(blob);
+
+  // Download the file using the chrome.downloads API
+  chrome.downloads.download({
+    url: blobUrl,
+    filename: filename,
+    saveAs: true
+  }, function (downloadId) {
+    // Show a confirmation message
+    console.log('Tasks data saved to file:', filename);
+  });
+
+}
+
 
 // // Load the task data from local storage when the extension is opened
 // document.addEventListener('DOMContentLoaded', loadTaskData);
@@ -412,21 +452,7 @@ document.addEventListener('DOMContentLoaded', function() {
     // =================================================================
     eBtnSave &&
     eBtnSave.addEventListener('click', function() {
-      chrome.history.search({text: '', startTime: 0, maxResults: 0}, function(data) {
-         // console.log(`data: ${data}` );
-        data.forEach(function(page) {
-          page.lastVisitTime = new Date(page.lastVisitTime).toLocaleString('en-US', { hour12: false, year: 'numeric', month: 'numeric', day: 'numeric', hour: '2-digit', minute:'2-digit' });
-          // console.log(page);
-        });
-
-        //var jsonData = JSON.stringify(data);
-        var jsonData = JSON.stringify(data, null, 2);
-        var blob = new Blob([jsonData], {type: 'application/json'});
-        var url = URL.createObjectURL(blob);
-
-        // Open "Save as" dialog window
-        chrome.downloads.download({ url: url, filename: 'Browsing_history.json', saveAs: true});
-      });
+        _Save();
     });
 
     // =================================================================
