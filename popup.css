@@ -90,12 +90,25 @@ input[type="submit"]:hover {
     background-color: #45a049;
 }
 
+.task_link_blue {
+    color:blue;
+    /* text-decoration:underline; */
+    cursor:pointer;
+    font-family: monospace, 'Courier New', Courier;
+}
 
-.task_link {
-        color:blue;
-        text-decoration:underline;
-        cursor:pointer;
-        font-family: monospace, 'Courier New', Courier;
+.task_link_red {
+    color:red;
+    /* text-decoration:underline; */
+    cursor:pointer;
+    font-family: monospace, 'Courier New', Courier;
+}
+
+.task_link_black {
+    color:black;
+    /* text-decoration:underline; */
+    cursor:pointer;
+    font-family: monospace, 'Courier New', Courier;
 }
 /*
 td:nth-child(2) { width: 20%; }

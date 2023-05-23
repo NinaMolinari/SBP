@@ -151,7 +151,7 @@ function _PopupInitialize() {
   _UpdatePluginIcon();
 
   myTasks.forEach((task) => {
-      if (task.state === 'running') {
+      if (task.state === '1_running') {
           activeTask = task;
           resumeTimer();
           return;
@@ -569,8 +569,11 @@ function startTimer() {
       name:         taskNameInput.value.trim(),
       startTime:    Date.now(),
       endTime:      Date.now(),
+      deadline:     Date.now(),
       elapsedTime:  0,
-      state:        'running' // 'stopped, paused, completed'
+      resume_count: 0,
+      state:        '1_running', // ' 2_paused, 3_planned, 8_stopped, 9_completed, , 7_scheduled '
+      note:         null
     };
 
     // Add the new task to the array
@@ -596,7 +599,7 @@ function pauseTimer() {
     // Clear the timer interval
     clearInterval(gTimerInterval);
     activeTask.endTime = Date.now();
-    activeTask.state =  'paused';
+    activeTask.state =  '2_paused';
     activeTask.elapsedTime += activeTask.endTime - activeTask.startTime;
     // Update UI
     eBtnTimerStart.disabled  = true;
@@ -612,12 +615,12 @@ function pauseTimer() {
 // ========================================================================
 function resumeTimer() {
 
-  if (activeTask && ((activeTask.state == 'paused') || (activeTask.state == 'stopped')) ) {
+  if (activeTask && ((activeTask.state == '2_paused') || (activeTask.state == '8_stopped')) ) {
     // Calculate pause duration
     // const pauseDuration = Date.now() - activeTask.endTime;
 
     activeTask.startTime = Date.now();
-    activeTask.state = 'running';
+    activeTask.state = '1_running';
     taskNameInput.value = activeTask.name;
 
     updateTimer();
@@ -634,7 +637,7 @@ function resumeTimer() {
     saveTaskData();
   }
 
-  if (activeTask && (activeTask.state == 'running') ) {
+  if (activeTask && (activeTask.state == '1_running') ) {
     taskNameInput.value = activeTask.name;
     gTimerInterval = setInterval(updateTimer, 1000);
 
@@ -655,7 +658,7 @@ function updateTimer() {
 
     //taskNameInput.value = activeTask.name;
 
-    if (activeTask.state === 'running') {
+    if (activeTask.state === '1_running') {
       newElapsedTime = (currentTime - activeTask.startTime);
     }
 
@@ -680,9 +683,9 @@ function stopTimer() {
 
     //updateTimer();
     // Set the end time and calculate total elapsed time
-    if (activeTask.state == 'running') {
+    if (activeTask.state == '1_running') {
       activeTask.endTime = Date.now();
-      activeTask.state = 'stopped';
+      activeTask.state = '8_stopped';
       activeTask.elapsedTime += activeTask.endTime - activeTask.startTime;
     }
     // Update UI
@@ -704,25 +707,30 @@ function stopTimer() {
 // ========================================================================
 // Function to render the task list
 // ========================================================================
-function renderTaskList() {
+function renderTaskList( ) {
   var tTime;
   var eTime = '';
+
+  mySortedTasks = _sortTaskList(myTasks);
 
   // Clear popup display area
   tableBody.innerHTML         = '';
   // divSearchResults.innerHTML  = '';
 
   // Render each task in the myTasks array
-  myTasks.forEach((task) => {
+  mySortedTasks.forEach((task) => {
 
     const taskItem = document.createElement('div');
+    var stState = '';
 
     tTime = formatDate(task.endTime); // .startTime
-    console.log(task.endTime);
+    // console.log(task.endTime);
     eTime = formatElapsedTime(task.elapsedTime);
 
-    // Style the taskItem div element via css properties using class name
-    taskItem.className = 'task_link';
+    if (task.state.includes('running')) { taskItem.className = 'task_link_red';  stState = 'R';}
+    if (task.state.includes('paused'))  { taskItem.className = 'task_link_blue'; stState = 'P';}
+    if (task.state.includes('stopped')) { taskItem.className = 'task_link_black'; stState = 'S';}
+
     taskItem.setAttribute("id", task.id );
     taskItem.addEventListener('click', function handleClick(event) {
       //_openTaskDetailsPopup(task);
@@ -731,10 +739,18 @@ function renderTaskList() {
       _selectContinueTask(event.target.id);
     });
 
-    taskItem.textContent = `${tTime}: [${eTime}] : (${(task.state).padEnd(8,"_")}) : ${task.name}`;
+    taskItem.textContent = `${tTime}: [${eTime}] (${stState}): ${task.name}`;
+    //(task.state).padEnd(8,"_")
 
     // taskList.appendChild(taskItem);
     tableBody.appendChild(taskItem);
+  });
+}
+
+function _sortTaskList(tasks) {
+  return tasks.sort(function(a,b) {
+    var x = a.state; var y = b.state; //var x = a[key]; var y = b[key];
+    return ((x < y) ? -1 : ((x > y) ? 1 : 0));
   });
 }
 
@@ -767,20 +783,27 @@ function _selectContinueTask (task_ID) {
 }
 
 function _setTimerControls (task) {
-  // if task.state === 'running' || task.state === '
+  // if task.state === '1_running' || task.state === '
   switch (task.state) {
-    case "running":
+    case "1_running":
       eBtnTimerStart.disabled  = eBtnTimerResume.disabled = true;
       eBtnTimerPause.disabled  = eBtnTimerEnd.disabled = false;
       break;
-    case "paused":
+    case "2_paused":
       eBtnTimerStart.disabled  = eBtnTimerPause.disabled = true;
       eBtnTimerResume.disabled = eBtnTimerEnd.disabled = false;
       break;
-    case "stopped":
-    case "planned":
+    case "3_planned":
+      eBtnTimerStart.disabled  = false;
+      eBtnTimerPause.disabled = eBtnTimerEnd.disabled = eBtnTimerResume.disabled = true;
+      break;
+    case "8_stopped":
       eBtnTimerStart.disabled  = eBtnTimerPause.disabled = eBtnTimerEnd.disabled = true;
       eBtnTimerResume.disabled = false;
+      break;
+    case "9_completed": // all timer buttons disabled
+      eBtnTimerStart.disabled  = eBtnTimerPause.disabled = true;
+      eBtnTimerEnd.disabled = eBtnTimerResume.disabled = true;
       break;
   }
 }
