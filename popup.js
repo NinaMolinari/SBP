@@ -723,7 +723,15 @@ function renderTaskList( ) {
     const taskItem = document.createElement('div');
     var stState = '';
 
-    tTime = formatDate(task.endTime); // .startTime
+
+    var start_Of_Day = new Date();
+    var end_Of_Day   = new Date();
+    start_Of_Day.setUTCHours(8,0,0,0);
+    end_Of_Day.setUTCHours(16,0,0,0); /* UTC endof day = 23,59,59,999 */
+    let yesterday = new Date(new Date().setDate(new Date().getDate()-1));
+
+
+    tTime = formatDate(task.startTime); /* .startTime, task.endTime */
     // console.log(task.endTime);
     eTime = formatElapsedTime(task.elapsedTime);
 
@@ -739,7 +747,11 @@ function renderTaskList( ) {
       _selectContinueTask(event.target.id);
     });
 
-    taskItem.textContent = `${tTime}: [${eTime}] (${stState}): ${task.name}`;
+
+
+    if (task.startTime > yesterday) { // start_Of_Day
+        taskItem.textContent = `${tTime}: [${eTime}] (${stState}): ${task.name}`;
+    }
     //(task.state).padEnd(8,"_")
 
     // taskList.appendChild(taskItem);
