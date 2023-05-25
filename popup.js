@@ -747,9 +747,9 @@ function renderTaskList( ) {
       _selectContinueTask(event.target.id);
     });
 
+    // Select for tasks display only recent and paused tasks
 
-
-    if (task.startTime > yesterday) { // start_Of_Day
+    if ( (task.startTime > yesterday) || task.state.includes('paused') || task.state.includes('running') ) { // start_Of_Day
         taskItem.textContent = `${tTime}: [${eTime}] (${stState}): ${task.name}`;
     }
     //(task.state).padEnd(8,"_")
@@ -797,11 +797,11 @@ function _selectContinueTask (task_ID) {
 function _setTimerControls (task) {
   // if task.state === '1_running' || task.state === '
   switch (task.state) {
-    case "1_running":
+    case "1_running", "running" :
       eBtnTimerStart.disabled  = eBtnTimerResume.disabled = true;
       eBtnTimerPause.disabled  = eBtnTimerEnd.disabled = false;
       break;
-    case "2_paused":
+    case "2_paused", "paused":
       eBtnTimerStart.disabled  = eBtnTimerPause.disabled = true;
       eBtnTimerResume.disabled = eBtnTimerEnd.disabled = false;
       break;
@@ -809,7 +809,7 @@ function _setTimerControls (task) {
       eBtnTimerStart.disabled  = false;
       eBtnTimerPause.disabled = eBtnTimerEnd.disabled = eBtnTimerResume.disabled = true;
       break;
-    case "8_stopped":
+    case "8_stopped", "stopped":
       eBtnTimerStart.disabled  = eBtnTimerPause.disabled = eBtnTimerEnd.disabled = true;
       eBtnTimerResume.disabled = false;
       break;
