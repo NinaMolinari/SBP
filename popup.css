@@ -110,6 +110,11 @@ input[type="submit"]:hover {
     cursor:pointer;
     font-family: monospace, 'Courier New', Courier;
 }
+
+.stats_black {
+    color:black;
+    font-family: monospace, 'Courier New', Courier;
+}
 /*
 td:nth-child(2) { width: 20%; }
 td:nth-child(3) { width: 40%; } */

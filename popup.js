@@ -15,9 +15,10 @@
 //              - Initial stab for working with tasks and timers
 //
 // TODO:
+//              -       Add selection of time window for filtering displays
+//              -       Add support for cli commands in search bar...
 //              -       add option to save open tabs
-//              -       finish running timer resumption on extension popup.
-//              -  100% select task for continuation
+//              -       add option to edit a task
 //              -       select task for changing status to "completed"
 //              -       implemet "change status of task to completed"
 //              -       Search in tasks
@@ -30,6 +31,13 @@
 // =================================================================
 */
 // DOM elements
+
+// Planning on splitting this file and the Import the required modules
+//
+// import { searchHistory } from './history.js';
+// import { searchTabs } from './tabs.js';
+// import { TaskTracker } from './task-tracker.js';
+// import { searchFavorites } from './favorites.js';
 
 // Search block
 var eBtnSearch        = document.getElementById('btnSearch');
@@ -44,6 +52,7 @@ var eBtnTimerStart    = document.getElementById('btnTimerStart');
 var eBtnTimerPause    = document.getElementById('btnTimerPause');
 var eBtnTimerResume   = document.getElementById('btnTimerPause');
 var eBtnTimerEnd      = document.getElementById('btnTimerEnd');
+var eBtnEdit          = document.getElementById('btnTaskEdit');
 
 var taskList          = document.getElementById('task-list');
 
@@ -56,6 +65,7 @@ var divSearchSummary  = document.getElementById('div_SearchSummary');
 // Local vars
 
 let myTasks           = [];     // Array to store task data objects
+let gRunningTask      = null;
 let activeTask        = null;   // Currently active task
 let gTimerInterval;             // Timer interval reference
 let gStartTime;
@@ -74,7 +84,7 @@ var bSupplINFO        = true;
 // ========================================================================
 function formatDate (date) {
   // ========================================================================
-  console.log(`formatDate:${date}`);
+  // console.log(`formatDate:${date}`);
 
       nDate         = new Date(date);
       const year    = nDate.getFullYear();
@@ -83,7 +93,8 @@ function formatDate (date) {
       const hours   = nDate.getHours().toString().padStart(2, '0');
       const minutes = nDate.getMinutes().toString().padStart(2, '0');
       const seconds = nDate.getSeconds().toString().padStart(2, '0');
-      return (`${year}.${month}.${day} ${hours}:${minutes}`);
+      // return (`${year}.${month}.${day} ${hours}:${minutes}`);
+      return (`'${month}/${day} ${hours}:${minutes}`);
 };
 
 // ========================================================================
@@ -93,6 +104,16 @@ function ClearAll() {
   tableBody.innerHTML         = '';
   divSearchResults.innerHTML  = '';
   divSearchSummary.innerHTML  = ':';
+  //
+  eBtnTimerStart.disabled     = false;
+  eBtnTimerPause.disabled     = true;
+  eBtnTimerResume.disabled    = true;
+  eBtnTimerEnd.disabled       = true;
+  eBtnEdit.disabled           = true;
+  //
+  timerElement.textContent    = '00:00:00';
+  taskNameInput.value         = '';
+  //
 }
 
 // =================================================================
@@ -147,11 +168,12 @@ function _PopupInitialize() {
   eBtnTimerPause.disabled  = true;
   eBtnTimerResume.disabled = true;
   eBtnTimerEnd.disabled    = true;
+  eBtnEdit.disabled        = true;
 
   _UpdatePluginIcon();
 
   myTasks.forEach((task) => {
-      if (task.state === '1_running') {
+      if (task.state.includes('running')) {
           activeTask = task;
           resumeTimer();
           return;
@@ -211,7 +233,7 @@ function _PerformSearch() {
 // ========================================================================
     (gSearchMode == "mode_SearchTabs")  && _SearchTabs(searchInput.value);
     (gSearchMode == "mode_SearchHist")  && _SearchHist(searchInput.value);
-    (gSearchMode == "mode_SearchFavs")  && _SearchFavs(searchInput.value);
+    (gSearchMode == "mode_SearchFavs")  && searchFavorites(searchInput.value); //_SearchFavs(
     (gSearchMode == "mode_SearchTasks") && _SearchTasks(searchInput.value);
 }
 
@@ -325,6 +347,7 @@ function _SearchHist(search_pattern) {
 function _SearchTasks(){
   // ========================================================================
   if (gSearchMode == "mode_SearchTasks") {
+    tableBody.innerHTML = '';
     renderTaskList();
   }
 }
@@ -394,6 +417,16 @@ function _saveTasksToFile() {
 
 }
 
+function _editTask(task) {
+  if (task == null) return;
+  task && console.log('in _editTask: ', task.name);
+  if (task && task.state.includes('running')) {
+    alert(`Can not edit tasks that are actively running !`);
+    return;
+  }
+
+  alert(`Can not edit task ["${task.name}"] \n Function is not implemented yet!`);
+}
 
 // // Load the task data from local storage when the extension is opened
 // document.addEventListener('DOMContentLoaded', loadTaskData);
@@ -417,6 +450,7 @@ document.addEventListener('DOMContentLoaded', function() {
     eBtnTimerPause   = document.getElementById('btnTimerPause');
     eBtnTimerResume  = document.getElementById('btnTimerResume');
     eBtnTimerEnd     = document.getElementById('btnTimerEnd');
+    eBtnEdit         = document.getElementById('btnTaskEdit');
 
     tableBody        = document.getElementById('tblSearchResults');
     divSearchResults = document.getElementById('div_SearchResults');
@@ -493,6 +527,12 @@ document.addEventListener('DOMContentLoaded', function() {
       console.log("Timer stopped");
     });
 
+    eBtnEdit &&
+    eBtnEdit.addEventListener('click', function() {
+      _editTask(activeTask);
+      console.log("Starting task edit session");
+    });
+
     // Start the timer when the task name is entered
     taskNameInput&
     taskNameInput.addEventListener('change', function () {
@@ -553,7 +593,7 @@ function formatTimeComponent(time) {
 function formatElapsedTime(elapsedTime) {
   const seconds = Math.floor(elapsedTime / 1000) % 60;
   const minutes = Math.floor(elapsedTime / 60000) % 60;
-  const hours = Math.floor(elapsedTime / 3600000);
+  const hours   = Math.floor(elapsedTime / 3600000);
 
   return `${formatTimeComponent(hours)}:${formatTimeComponent(minutes)}:${formatTimeComponent(seconds)}`;
 }
@@ -565,13 +605,14 @@ function startTimer() {
   if (taskNameInput.value.trim() !== '') {
     // Create a new task data object
     const newTask = {
-      id:           (Date.now()).toFixed(),
+      id:           Date.now(),
       name:         taskNameInput.value.trim(),
+      started:      Date.now(),
       startTime:    Date.now(),
       endTime:      Date.now(),
-      deadline:     Date.now(),
+      deadline:     null,
       elapsedTime:  0,
-      resume_count: 0,
+      resumeCount:  0,
       state:        '1_running', // ' 2_paused, 3_planned, 8_stopped, 9_completed, , 7_scheduled '
       note:         null
     };
@@ -588,6 +629,8 @@ function startTimer() {
     saveTaskData();
     // Start the timer interval
     gTimerInterval = setInterval(updateTimer, 1000);
+  }else{
+    alert("Can not start empty task !");
   }
 }
 
@@ -598,15 +641,17 @@ function pauseTimer() {
   if (activeTask) {
     // Clear the timer interval
     clearInterval(gTimerInterval);
-    activeTask.endTime = Date.now();
-    activeTask.state =  '2_paused';
-    activeTask.elapsedTime += activeTask.endTime - activeTask.startTime;
+    activeTask.resumeCount  += 1;
+    activeTask.endTime       = Date.now();
+    activeTask.state         = '2_paused';
+    activeTask.elapsedTime  += activeTask.endTime - activeTask.startTime;
     // Update UI
     eBtnTimerStart.disabled  = true;
     eBtnTimerPause.disabled  = true;
     eBtnTimerResume.disabled = false;
     eBtnTimerEnd.disabled    = false;
   }
+  renderTaskList();
   saveTaskData();
 }
 
@@ -615,18 +660,18 @@ function pauseTimer() {
 // ========================================================================
 function resumeTimer() {
 
-  if (activeTask && ((activeTask.state == '2_paused') || (activeTask.state == '8_stopped')) ) {
+  if  ( activeTask.state.includes('paused') || activeTask.state.includes('stopped') ) {
     // Calculate pause duration
     // const pauseDuration = Date.now() - activeTask.endTime;
 
-    activeTask.startTime = Date.now();
-    activeTask.state = '1_running';
-    taskNameInput.value = activeTask.name;
+    activeTask.startTime     = Date.now();
+    activeTask.state         = '1_running';
+    taskNameInput.value      = activeTask.name;
 
     updateTimer();
 
     // Start the timer interval
-    gTimerInterval = setInterval(updateTimer, 1000);
+    gTimerInterval           = setInterval(updateTimer, 1000);
 
     // Update UI
     eBtnTimerStart.disabled  = true;
@@ -637,15 +682,17 @@ function resumeTimer() {
     saveTaskData();
   }
 
-  if (activeTask && (activeTask.state == '1_running') ) {
-    taskNameInput.value = activeTask.name;
-    gTimerInterval = setInterval(updateTimer, 1000);
+  if (activeTask && (activeTask.state.includes('running') )) {
+    taskNameInput.value      = activeTask.name;
+    gTimerInterval           = setInterval(updateTimer, 1000);
 
     eBtnTimerStart.disabled  = true;
     eBtnTimerResume.disabled = true;
     eBtnTimerPause.disabled  = false;
     eBtnTimerEnd.disabled    = false;
   }
+
+  renderTaskList();
 }
 
 // ========================================================================
@@ -658,7 +705,7 @@ function updateTimer() {
 
     //taskNameInput.value = activeTask.name;
 
-    if (activeTask.state === '1_running') {
+    if (activeTask.state.includes('running')) { // replaced === with ==
       newElapsedTime = (currentTime - activeTask.startTime);
     }
 
@@ -683,11 +730,14 @@ function stopTimer() {
 
     //updateTimer();
     // Set the end time and calculate total elapsed time
-    if (activeTask.state == '1_running') {
-      activeTask.endTime = Date.now();
-      activeTask.state = '8_stopped';
+    if ( activeTask.state.includes('running') ) {
+      activeTask.endTime      = Date.now();
+      activeTask.state        = '8_stopped';
       activeTask.elapsedTime += activeTask.endTime - activeTask.startTime;
     }
+    // Change status of the task to "stopped"
+    activeTask.state.includes('paused') && (activeTask.state = '8_stopped');
+
     // Update UI
     eBtnTimerStart.disabled  = false;
     eBtnTimerPause.disabled  = eBtnTimerResume.disabled = eBtnTimerEnd.disabled =true;
@@ -759,6 +809,9 @@ function renderTaskList( ) {
   });
 }
 
+// ========================================================================
+// Sort tasks by state
+// ========================================================================
 function _sortTaskList(tasks) {
   return tasks.sort(function(a,b) {
     var x = a.state; var y = b.state; //var x = a[key]; var y = b[key];
@@ -774,20 +827,30 @@ function _selectContinueTask (task_ID) {
 
     var selectedTask = null;
 
-    // bad: // selectedTask = myTasks.find(task_ID == task_ID);
-    // const result = inventory.find(({ name }) => name === "cherries");
+    // bad choice? : selectedTask = myTasks.find(task_ID == task_ID);
+    // bad choice ?: const result = myTasks.find(({ id }) => id === taskID);
     myTasks.forEach((task) => {
-      if (task.id === task_ID) {
+      if (task.id == task_ID) {//changed === to == to accomodate changes in id type "string" vs long
           activeTask = selectedTask = task;
           //continue; Uncaught SyntaxError: Illegal continue statement: no surrounding iteration statement
       }
     });
 
-    var infoText = "";
-    infoText += `selectedTask: ${selectedTask.name} <br>`;
-    infoText += `time spent so far: ${selectedTask.elapsedTime} ms`;
-    bSupplINFO && (divSearchSummary.innerHTML = (infoText));
+    var infoText = "";//@here
 
+    infoText += `<b>Selected task</b> : [ <i>"${selectedTask.name}"</i> ] <br>`;
+    infoText += "<table class='stats_black'><tr><td width=48%>";
+    //infoText += `Task ID       : ${selectedTask.id} <br>`;
+    infoText += `<b>Task Started </b> : ${formatDate(Number(selectedTask.id))} <br>`;
+    infoText += `<b>Current State</b> : ${selectedTask.state} <br>`;
+    infoText += `<b>Time spent   </b> : ${formatElapsedTime(selectedTask.elapsedTime)} <br>`;
+    infoText += "</td><td width=48%>";
+    infoText += `<b>Timer started</b> : ${formatDate(selectedTask.startTime)} <br>`;
+    infoText += `<b>Timer stopped</b> : ${formatDate(selectedTask.endTime)} <br>`;
+    infoText += `<b>Resume count </b> : ${selectedTask.resumeCount} <br>`;
+    infoText += "</td></tr></table>";
+
+    bSupplINFO && (divSearchSummary.innerHTML = (infoText));
 
     taskNameInput.value = activeTask.name;
     updateTimer(activeTask);
@@ -795,25 +858,28 @@ function _selectContinueTask (task_ID) {
 }
 
 function _setTimerControls (task) {
-  // if task.state === '1_running' || task.state === '
   switch (task.state) {
-    case "1_running", "running" :
-      eBtnTimerStart.disabled  = eBtnTimerResume.disabled = true;
+    case "1_running":
+    case "running" :
+      eBtnTimerStart.disabled  = eBtnTimerResume.disabled = eBtnEdit.disabled = true;
       eBtnTimerPause.disabled  = eBtnTimerEnd.disabled = false;
       break;
-    case "2_paused", "paused":
+    case "2_paused":
+    case "paused":
       eBtnTimerStart.disabled  = eBtnTimerPause.disabled = true;
-      eBtnTimerResume.disabled = eBtnTimerEnd.disabled = false;
+      eBtnTimerResume.disabled = eBtnTimerEnd.disabled =  eBtnEdit.disabled = false;
       break;
     case "3_planned":
-      eBtnTimerStart.disabled  = false;
+      eBtnTimerStart.disabled  =  eBtnEdit.disabled = false;
       eBtnTimerPause.disabled = eBtnTimerEnd.disabled = eBtnTimerResume.disabled = true;
       break;
-    case "8_stopped", "stopped":
+    case "8_stopped":
+    case "stopped":
       eBtnTimerStart.disabled  = eBtnTimerPause.disabled = eBtnTimerEnd.disabled = true;
-      eBtnTimerResume.disabled = false;
+      eBtnTimerResume.disabled =  eBtnEdit.disabled = false;
       break;
     case "9_completed": // all timer buttons disabled
+      eBtnEdit.disabled = false;
       eBtnTimerStart.disabled  = eBtnTimerPause.disabled = true;
       eBtnTimerEnd.disabled = eBtnTimerResume.disabled = true;
       break;
@@ -916,5 +982,6 @@ serviceworker.js:117 [...5ca7af4b98465ab821c5a15d75ef1152] fetching navigation r
                 resultingClientId: '2eb27fa1-bec5-4d19-8a42-1ee1774066e0',
                 isReload: false, 
                 …}
-
+[6]:
+    // https://www.freecodecamp.org/news/how-to-convert-a-string-to-a-number-in-javascript/
 */

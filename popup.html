@@ -11,6 +11,8 @@
     <meta charset="UTF-8">
     <title>Smart Tabs Browser Extension</title>
     <script src="popup.js"></script>
+    <!-- script src="favorites.js" defer></script -->
+    <script src="favorites.js"></script>
     <link rel="stylesheet" href="popup.css">
 </head>
 <body>
@@ -19,7 +21,7 @@
           <!-- ================================================================================== -->
           <input checked type="radio" id="bSearchTabs" name="Search_Option" value="mSearchTabs">
                 <label > Open Tabs</label> <br> <!--for="Search_Tabs_Option"-->
-          <input disabled type="radio" id="bSearchFavorites" name="Search_Option" value="mSearchFavs" >
+          <input type="radio" id="bSearchFavorites" name="Search_Option" value="mSearchFavs" >
                 <label > Favorites</label> <br>
           <input type="radio" id="bSearchHist" name="Search_Option" value="mSearchHist" >
                 <label > Web History</label> <br>
@@ -50,6 +52,7 @@
             <button id="btnTimerPause">pause</button>
             <button id="btnTimerResume">resume</button>
             <button id="btnTimerEnd">end</button>
+            <button id="btnTaskEdit">edit</button>
 
             <!--
             const taskNameInput = document.getElementById('task-name-input');
@@ -77,7 +80,7 @@
   <hr>
   <!-- ================================================================================== -->
     <div id="div_SearchSummary">:</div>
-    <div id="task-list"></div>
+    <!-- div id="task-list"></div -->
     <hr>
     <div id="div_SearchResults"></div>
     <div> <table id="tblSearchResults" ><tbody> </tbody> </table> </div>

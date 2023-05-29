@@ -24,7 +24,7 @@ function _updateBadge() {
 _updateBadge();
 
 chrome.tabs.onCreated.addListener(function(tab) {
-    if ( numTabs > 0 ) TabCountAdjustment = 1;
+    if ( numTabs > 0 ) TabCountAdjustment = 0;
     _updateBadge();
     console.log('INFO(tabs.onCreated): New tab opened');
 });

@@ -11,6 +11,7 @@
                           "history",
                           "downloads",
                           "tabs",
+                          "bookmarks",
                           "storage",
                           "declarativeContent"
     ],
