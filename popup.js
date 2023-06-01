@@ -85,7 +85,7 @@ var bSupplINFO        = true;
 function formatDate (date) {
   // ========================================================================
   // console.log(`formatDate:${date}`);
-
+      curYear       = new Date().getFullYear(); //Date(now)  ;// let date =  new Date().getFullYear();
       nDate         = new Date(date);
       const year    = nDate.getFullYear();
       const month   = (nDate.getMonth() + 1).toString().padStart(2, '0');
@@ -93,8 +93,12 @@ function formatDate (date) {
       const hours   = nDate.getHours().toString().padStart(2, '0');
       const minutes = nDate.getMinutes().toString().padStart(2, '0');
       const seconds = nDate.getSeconds().toString().padStart(2, '0');
-      // return (`${year}.${month}.${day} ${hours}:${minutes}`);
-      return (`'${month}/${day} ${hours}:${minutes}`);
+
+      if (year - curYear < 0) {
+         return (`${year}.${month}.${day} ${hours}:${minutes}`);
+      } else {
+         return (`'${month}/${day} ${hours}:${minutes}`);
+      }
 };
 
 // ========================================================================
@@ -111,9 +115,12 @@ function ClearAll() {
   eBtnTimerEnd.disabled       = true;
   eBtnEdit.disabled           = true;
   //
+  activeTask=null;
+  // updateTimer();
   timerElement.textContent    = '00:00:00';
   taskNameInput.value         = '';
   //
+
 }
 
 // =================================================================
@@ -541,7 +548,7 @@ document.addEventListener('DOMContentLoaded', function() {
       if (taskNameInput.value.trim() !== '') {
         startTimer();
       } else {
-        stopTimer();
+        // stopTimer();
       }
     });
 
@@ -632,6 +639,7 @@ function startTimer() {
   }else{
     alert("Can not start empty task !");
   }
+  renderTaskList();
 }
 
 // ========================================================================

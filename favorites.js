@@ -1,75 +1,131 @@
-// Search block
-// var tableBody         = document.getElementById('tblSearchResults');
+// FILE: favorites.js
+
+// Getting Search block control elements
 // var searchInput       = document.getElementById('searchString');
 var divSearchResults2  = document.getElementById('div_SearchResults');
 var tableBody2         = document.getElementById('tblSearchResults');
 var divSearchSummary2  = document.getElementById('div_SearchSummary');
-var gBookMarks         = [];
-var matchedBMs         = [];
 
-// var divSearchSummary  = document.getElementById('div_SearchSummary');
+//var gBookMarks         = [];
+var gBookMarks         = new Array();
+var matchedBMs         = [];
+var gFBmNodes          = [];
+var gBmCount           = 0;
 
 // ==========================================================================
-// Define the searchFavorites function
-// export function searchFavorites(searchQuery) { // now using Window.function() binding instead...
+// Fucntion searchFavorites():
+// Shared between code modules by attaching to a global "Window" object:
+// see: window.searchFavorites = searchFavorites;
+// Alternatively consider exporting it as function searchFavorites(searchQuery)
 // ==========================================================================
 function searchFavorites(searchQuery) {
-    // Use the chrome.bookmarks API to search for favorite links
 
-    // https://stackoverflow.com/questions/2812622/get-google-chromes-root-bookmarks-folder
+    // https://developer.mozilla.org/en-US/search?q=Bookmarks
     // https://stackoverflow.com/questions/2812622/get-google-chromes-root-bookmarks-folder
     // http://code.google.com/chrome/extensions/override.html
 
+    divSearchSummary2.innerHTML = '';
+    tableBody2.innerHTML = '';
+    gBookMarks.length = 0;
 
+    if ( searchQuery == '' ) { _listBookmarks(); return; }
+
+    // Use the chrome.bookmarks API to search for favorite links
     chrome.bookmarks.search({ query: searchQuery }, function (results) {
-        gBookMarks = results;
       // Process the search results
       if (results.length > 0) {
         // Display the search results
         displaySearchResults(results);
-        console.log(`DOM loaded: tableBody2: ${results}`);
-      } else {
-        // Handle no results found
-        handleNoResultsFound();
+        console.log(`chrome.bookmarks.search(): ${results}`);
       }
     });
+}
+
+// ==========================================================================
+function _listBookmarks() {
+    // ==========================================================================
 
     var bmCount = 0;
     var bmTitle = '';
     var linkText = '';
     var nMBMs   = 0;
     matchedBMs = [];
+    var mBMs   = [];
 
-    for (const bm of gBookMarks) {
-    //gBookMarks.forEach (function (bm) {
-        bmCount +=1 ;
-        var tr = document.createElement('tr');
-        // console.log( " original: " + tCount ":" +  mTab.title );
-        // console.log( ` original: ${tCount} :  ${mTab.title}` );
-        bmTitle = bm.title.replace(/</g,"&lt;");
-        // if (gLinkDisplayMode == 'mode_Display_TITLE') {
-        //   linkText = bmTitle;
-        // }else{
-        //   linkText = bm.url.substring(0,78) ;
-        // }
+    var mBM2s   = [];
+    console.log('_listBookmarks1: ' + gBookMarks);
+    // JSON.stringify(mBM2s));
+    gBookMarks  = []; // gBookMarks.slice();
+    console.log('_listBookmarks2: ' + gBookMarks);
 
+    // ==========================================================================
+    chrome.bookmarks.getTree(function (bookmarkTreeNodes) {
+        gBmCount = 0;
 
-        if (bm.url) {
-            console.log( bm.title );
-            if ((bm.url.indexOf(searchQuery) !== -1) || (bm.title.indexOf(searchQuery) !== -1)) {
-                matchedBMs.push(bm);
+        // Recursive function to flatten the bookmarks tree
+        function flattenBookmarks(bookmarkNodes) {
+            // console.log(`flatten1: ${mBM2s.length}`);
+            for (const node of bookmarkNodes) {
+                // Skip if the node doesn't have a URL (it is a folder)
+                if (!node.url) {
+                    // console.log(node);
+                    if (node.children) {
+                        // Recursively flatten the child nodes
+                        flattenBookmarks(node.children);
+                    }
+                    continue;
+                }
+
+                // console.log(node);
+                const xBookMark = {
+                    id:             node.id,
+                    parentId:       node.parentId,
+                    dateAdded:      node.dateAdded, // dateCreated
+                    title:          node.title,
+                    url:            node.url
+                }
+
+                // gBookMarks.push(xBookMark);
+
+                mBM2s.push(xBookMark);
+                //gBookMarks[gBmCount]= xBookMark;
+                gBmCount += 1;
+
+                var tr = document.createElement('tr');
+                bmTitle = node.title.replace(/</g,"&lt;");
+                tr.innerHTML = '<td> (' + gBmCount + ')</td><td>'+ _formatDate2(xBookMark.dateAdded) + '</td><td><a href=' + xBookMark.url + '>[' + bmTitle.substring(0,72) + ']</a></td>';
+                tableBody2.appendChild(tr);
+                // console.log(`pushed node into bookmarks: ${node}`);
             }
+            // console.log(`flatten2: ${mBM2s.length}`);
         }
 
-        tr.innerHTML = '<td> (' + bmCount + ')</td><td><a href=' + bm.url + '>[' + linkText + ']</a></td>';
-        tableBody2.appendChild(tr);
-    } //);
+        // Call the recursive function with the bookmark tree nodes
+        flattenBookmarks(bookmarkTreeNodes);
+        // console.log(`flatten3: ${mBM2s.length}`);
+        gBookMarks = [...mBM2s];
 
-      nMBMs = matchedBMs.length;
-      divSearchSummary2.innerHTML = (`INFO: ${bmCount} BMs matched out of ${gBookMarks.length}`);
-
-
+        // Log the bookmarks to the console
+        // console.log(`BookMarks: ${gBookMarks.length} `);
+        divSearchSummary2.innerHTML = (`INFO: Total bookmars: [${gBookMarks.length}]`);
+    }); // end of Bookmark Tree flattening
 }
+
+// ========================================================================
+function _formatDate2 (date) {
+    // ========================================================================
+    // console.log(`formatDate:${date}`);
+
+        nDate         = new Date(date);
+        const year    = nDate.getFullYear();
+        const month   = (nDate.getMonth() + 1).toString().padStart(2, '0');
+        const day     = nDate.getDate().toString().padStart(2, '0');
+        const hours   = nDate.getHours().toString().padStart(2, '0');
+        const minutes = nDate.getMinutes().toString().padStart(2, '0');
+        const seconds = nDate.getSeconds().toString().padStart(2, '0');
+        return (`${year}.${month}.${day} ${hours}:${minutes}`);
+        // return (`'${month}/${day} ${hours}:${minutes}`);
+};
 
 // ==========================================================================
 // Function to display search results
