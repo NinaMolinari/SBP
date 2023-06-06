@@ -1,18 +1,22 @@
 /*
 // =================================================================
 // FILE:        popup.html
-// DATE:        2023-05-21 11:05 am PDT
+// DATE:        2023-06-02 5:00 am PDT
 // Copyright:   Nina Molinari 2023 (c)
 //
 // PROJECT:     "Keeping Tabs" Browser Plugin
 //              (originally named "Smart Links")
 //              I need a way to "keep tabs" on my tasks and work time, web resources, etc.
-//              So, hence, I am building my own Tasks/Tabs/Links tracker.
+//              So, hence, I am building my own Tasks/Tabs/WebLinks tracker.
 //
-// VERSION:     00.01.12
+// VERSION:     00.01.13
 //
 // IMPLEMENTED:
-//              - Initial stab for working with tasks and timers
+//              - Task object added new features, task schema changed
+//              -
+//
+// CHANGES:
+//              6/2/23 3:00: task object schema change: elapsedTime is now TotalTimeSpent
 //
 // TODO:
 //              -       Add selection of time window for filtering displays
@@ -80,6 +84,7 @@ var gTotalOpenWindows = 0;
 var gTotalOpenTabs    = 0;
 var gMatchedTabs      = 0;
 var bSupplINFO        = true;
+var gTaskSchemaVer    = "1.02";
 
 // ========================================================================
 function formatDate (date) {
@@ -207,18 +212,18 @@ function _CollectTabsInfo() {
     active_tabs       = 0;
     tabs_count_string = '( ';
 
-    console.log ("Total Windows: " + windows.length);
+    console.log ("popup.js: _CollectTabsInfo(): Total Windows: " + windows.length);
 
     windows.forEach( function(window) {
         total_tabs += window.tabs.length;
 
         if (window.focused) {
           tabs_count_string += '<b>'+ window.tabs.length  + '</b> ; ';
-          console.log ("Tabs in Focused Window: " + window.tabs.length);
+          console.log ("popup.js: _CollectTabsInfo(): Tabs in Focused Window: " + window.tabs.length);
         }
         else {
           tabs_count_string += window.tabs.length + ' ; ';
-          console.log ("Tabs in UnFocused Window: " + window.tabs.length);
+          console.log ("popup.js: _CollectTabsInfo(): Tabs in UnFocused Window: " + window.tabs.length);
         }
         window.tabs.forEach(function(_tab) {
           // chrome.runtime.sendMessage({command: "displayUrls", urls: urls});
@@ -231,6 +236,7 @@ function _CollectTabsInfo() {
     gTabsCountString = tabs_count_string;
 
     chrome.action.setBadgeText({text: '' + `${gTotalOpenWindows}:${gTotalOpenTabs}`});
+    console.log (`popup.js: _CollectTabsInfo(): W=${gTotalOpenWindows},T=${gTotalOpenTabs}`);
     divSearchSummary.innerHTML = (`TABS: ${gTotalOpenTabs} in ${gTotalOpenWindows} Windows:  (${gTabsCountString})<br>`);
   }); // =======> end of chrome.windows.getAll()
 }
@@ -327,8 +333,7 @@ function _SearchHist(search_pattern) {
           var date      = new Date(page.lastVisitTime);
           //var time    = date.toLocaleString();
           var time      = formatDate(date);
-          //var pUrl    = page.url;
-          //var pTitle  = page.title; // .substring(0, 80);
+          var mLink     = '';
           current_count += 1;
 
           if ((page.url.indexOf(search_pattern) !== -1) || (page.title.indexOf(search_pattern) !== -1)) {
@@ -336,11 +341,15 @@ function _SearchHist(search_pattern) {
               matchedPageTitles.push(page.title);
               matchedPages.push({Url:page.url, Title: page.title});
 
-              linkText = ((page.title != '')? page.title:page.url).substring(0,78) ;
-
-              //tr.innerHTML = '<td width=10%>' + current_count + '</td><td width=30%>' + time + '</td><td=40%><a href='+page.url+'>'+ page.title + '</a></td>';
-              tr.innerHTML = '<td width=6%>' + current_count + '</td><td width=18%>' + time + '</td><td><a href='+page.url+'>'+ linkText + '</a></td>';
-
+              linkText = ((page.title != '')? page.title:page.url).substring(0,72) ;
+              // Adjusting for Japanese characters: see examples below
+              // or check hiragana full size /^[ぁ-ん]+$/
+              // see more options at the end: [7].
+              if ( linkText.match(/[\u3000-\u303f\u3040-\u309f\u30a0-\u30ff\uff00-\uff9f\u4e00-\u9faf\u3400-\u4dbf]/) ) {
+                 linkText = `[ ${(page.url).substring(0,50)}]`;
+              }
+              mLink    = linkText.replace(/</g,"&lt;");
+              tr.innerHTML = '<td>' + current_count + '</td><td>[' + time + ']</td><td><a href=' + page.url + '>' + mLink + '</a></td>';
               tableBody.appendChild(tr);
           }
       });
@@ -426,13 +435,16 @@ function _saveTasksToFile() {
 
 function _editTask(task) {
   if (task == null) return;
-  task && console.log('in _editTask: ', task.name);
-  if (task && task.state.includes('running')) {
-    alert(`Can not edit tasks that are actively running !`);
+
+  console.log('popup.js: _editTask(): task = ', task.name);
+  if (task.state.includes('running') || task.state.includes('paused')) {
+    alert(`Can not edit tasks that are actively running or paused !`);
     return;
+  }else {
+     _openEditTaskPopup(task);
   }
 
-  alert(`Can not edit task ["${task.name}"] \n Function is not implemented yet!`);
+  // alert(`Can not edit task ["${task.name}"] \n Function is not implemented yet!`);
 }
 
 // // Load the task data from local storage when the extension is opened
@@ -440,8 +452,35 @@ function _editTask(task) {
 
 // Event listener for extension activation
 chrome.runtime.onStartup.addListener(loadTaskData);
+
 // Event listener for extension deactivation
 chrome.runtime.onSuspend.addListener(saveTaskData);
+
+// ========================================================================
+// Function to handle messages received from the edit_task.js script
+// ========================================================================
+chrome.runtime.onMessage.addListener(function (message) {
+  console.log(`popup.js: onPassMessage(#3): ${message.type}`);
+  if (message.type === 'updateTask') {
+    const updatedTask = message.task;
+
+    // Find the index of the task in the tasks array based on a unique identifier
+    const index = myTasks.findIndex(task => task.id === updatedTask.id);
+
+    console.log(`popup.js: onPassMessage(#4): index ${index}: to beupdated`);
+
+    if (index != -1) {
+      // Update the task in the tasks array
+      myTasks[index] = updatedTask;
+      saveTaskData();
+      console.log(`popup.js: onPassMessage(#1): Task # ${index}: updated ${updatedTask.name}`);
+      console.log(`popup.js: onPassMessage(#1): Task duration ${updatedTask.elapsedTime}`);
+    }
+    console.log(`popup.js: onPassMessage(#2): failed update for Task # ${index}: ${updatedTask.name}`);
+    console.log(`popup.js: onPassMessage(#2): Task duration ${updatedTask.elapsedTime}`);
+  }
+});
+
 
 // ===================================================================
 // Add neccessary listeners upon completeion of the popup page load
@@ -537,18 +576,21 @@ document.addEventListener('DOMContentLoaded', function() {
     eBtnEdit &&
     eBtnEdit.addEventListener('click', function() {
       _editTask(activeTask);
-      console.log("Starting task edit session");
+      console.log("popup.js: dBtnEdit.Event.Clicked: Starting task edit session");
     });
 
     // Start the timer when the task name is entered
     taskNameInput&
-    taskNameInput.addEventListener('change', function () {
-      //taskNameInput.addEventListener('input', function () {
-      console.log("Task name entered");
-      if (taskNameInput.value.trim() !== '') {
-        startTimer();
-      } else {
-        // stopTimer();
+    // taskNameInput.addEventListener('change', function () { // this was too trigger happy for task name input
+    taskNameInput.addEventListener('keydown', function(event) { // originally 'keyup'
+      if ((event.code === "Enter") || (event.code === "NumpadEnter")) {
+          //taskNameInput.addEventListener('input', function () {
+          console.log("Task name entered");
+          if (taskNameInput.value.trim() !== '') {
+            startTimer();
+          } else {
+            // stopTimer();
+          }
       }
     });
 
@@ -612,16 +654,23 @@ function startTimer() {
   if (taskNameInput.value.trim() !== '') {
     // Create a new task data object
     const newTask = {
-      id:           Date.now(),
-      name:         taskNameInput.value.trim(),
-      started:      Date.now(),
-      startTime:    Date.now(),
-      endTime:      Date.now(),
-      deadline:     null,
-      elapsedTime:  0,
-      resumeCount:  0,
-      state:        '1_running', // ' 2_paused, 3_planned, 8_stopped, 9_completed, , 7_scheduled '
-      note:         null
+      id:                  Date.now(),
+      parent_id:           null,
+      agent_id:            'e1056418',
+      name:                taskNameInput.value.trim(),
+      state:               '1_running',   // ' 2_paused, 3_planned, 5_mEdited, 6_inEdit,  8_stopped, 9_completed, , 7_scheduled '
+      filter_mask:         0, // 0xffff.ffff - mind 64 vs 32-bit integers
+      started:             Date.now(),    // TODO: change to startedDate
+      startTime:           Date.now(),    // TODO: Change to TimerStartTime
+      endTime:             Date.now(),    // TOFO: Change to TimerStopTime
+      TotalTimeSpent:      0,             // NB: used to be elapsedTime
+      resumeCount:         0,
+      plannedDeadline:     null,          // Change: renoved plannedCompleteBy as it is redundant
+      plannedStartTime:    null,
+      plannedTotalTime:    null,
+      estimatedCompletion: null,
+      tags:                null,
+      shortNote:           null
     };
 
     // Add the new task to the array
@@ -649,10 +698,10 @@ function pauseTimer() {
   if (activeTask) {
     // Clear the timer interval
     clearInterval(gTimerInterval);
-    activeTask.resumeCount  += 1;
+    // activeTask.resumeCount  += 1;
     activeTask.endTime       = Date.now();
     activeTask.state         = '2_paused';
-    activeTask.elapsedTime  += activeTask.endTime - activeTask.startTime;
+    activeTask.TotalTimeSpent  += activeTask.endTime - activeTask.startTime;
     // Update UI
     eBtnTimerStart.disabled  = true;
     eBtnTimerPause.disabled  = true;
@@ -668,10 +717,13 @@ function pauseTimer() {
 // ========================================================================
 function resumeTimer() {
 
-  if  ( activeTask.state.includes('paused') || activeTask.state.includes('stopped') ) {
+  if  ( activeTask.state.includes('paused') ||
+        activeTask.state.includes('stopped') ||
+        activeTask.state.includes('Edit') ) {
     // Calculate pause duration
     // const pauseDuration = Date.now() - activeTask.endTime;
 
+    activeTask.resumeCount  += 1;
     activeTask.startTime     = Date.now();
     activeTask.state         = '1_running';
     taskNameInput.value      = activeTask.name;
@@ -718,7 +770,7 @@ function updateTimer() {
     }
 
     // Update UI with the current active task's elapsed time
-    const formattedTime = formatElapsedTime(activeTask.elapsedTime + newElapsedTime);
+    const formattedTime = formatElapsedTime(activeTask.TotalTimeSpent + newElapsedTime);
     timerElement.textContent = formattedTime;
   }else{
     timerElement.textContent = '00:00:00';
@@ -741,7 +793,7 @@ function stopTimer() {
     if ( activeTask.state.includes('running') ) {
       activeTask.endTime      = Date.now();
       activeTask.state        = '8_stopped';
-      activeTask.elapsedTime += activeTask.endTime - activeTask.startTime;
+      activeTask.TotalTimeSpent += activeTask.endTime - activeTask.startTime;
     }
     // Change status of the task to "stopped"
     activeTask.state.includes('paused') && (activeTask.state = '8_stopped');
@@ -791,11 +843,12 @@ function renderTaskList( ) {
 
     tTime = formatDate(task.startTime); /* .startTime, task.endTime */
     // console.log(task.endTime);
-    eTime = formatElapsedTime(task.elapsedTime);
+    eTime = formatElapsedTime(task.TotalTimeSpent);
 
     if (task.state.includes('running')) { taskItem.className = 'task_link_red';  stState = 'R';}
     if (task.state.includes('paused'))  { taskItem.className = 'task_link_blue'; stState = 'P';}
-    if (task.state.includes('stopped')) { taskItem.className = 'task_link_black'; stState = 'S';}
+    if (task.state.includes('stopped') ||
+        task.state.includes('Edit')) { taskItem.className = 'task_link_black'; stState = 'S';}
 
     taskItem.setAttribute("id", task.id );
     taskItem.addEventListener('click', function handleClick(event) {
@@ -846,15 +899,25 @@ function _selectContinueTask (task_ID) {
 
     var infoText = "";//@here
 
-    infoText += `<b>Selected task</b> : [ <i>"${selectedTask.name}"</i> ] <br>`;
+    infoText += `<b>Selected task</b> : [ <mark>"${selectedTask.name}"</mark> ] <br>`;
     infoText += "<table class='stats_black'><tr><td width=48%>";
     //infoText += `Task ID       : ${selectedTask.id} <br>`;
-    infoText += `<b>Task Started </b> : ${formatDate(Number(selectedTask.id))} <br>`;
+    infoText += `<b>Task Started </b> : ${formatDate(Number(selectedTask.started))} <br>`;
     infoText += `<b>Current State</b> : ${selectedTask.state} <br>`;
-    infoText += `<b>Time spent   </b> : ${formatElapsedTime(selectedTask.elapsedTime)} <br>`;
+    // Workaround for task object schema change 2023-06-02 3:48 pm PST
+    if (selectedTask.TotalTimeSpent === undefined) {
+      infoText += `<b>Time spent   </b> : ${formatElapsedTime(selectedTask.elapsedTime)} <br>`;
+    }else{
+      infoText += `<b>Time spent   </b> : ${formatElapsedTime(selectedTask.TotalTimeSpent)} <br>`;
+    }
+    console.log(`popup.js: _selectContinuedTask(#1): time spent ${selectedTask.TotalTimeSpent}`);
     infoText += "</td><td width=48%>";
     infoText += `<b>Timer started</b> : ${formatDate(selectedTask.startTime)} <br>`;
-    infoText += `<b>Timer stopped</b> : ${formatDate(selectedTask.endTime)} <br>`;
+    if (selectedTask.state.includes('running')) {
+      infoText += `<b>Timer stopped</b> : now running... <br>`;
+    }else{
+      infoText += `<b>Timer stopped</b> : ${formatDate(selectedTask.endTime)} <br>`;
+    }
     infoText += `<b>Resume count </b> : ${selectedTask.resumeCount} <br>`;
     infoText += "</td></tr></table>";
 
@@ -883,6 +946,7 @@ function _setTimerControls (task) {
       break;
     case "8_stopped":
     case "stopped":
+    case "6_inEdit":
       eBtnTimerStart.disabled  = eBtnTimerPause.disabled = eBtnTimerEnd.disabled = true;
       eBtnTimerResume.disabled =  eBtnEdit.disabled = false;
       break;
@@ -928,7 +992,7 @@ function saveTaskData() {
 
   // Save the task data to local storage
   localStorage.setItem('savedTasks', taskData);
-  console.log(`Tasks Data saved to local storage}`);
+  console.log(`popup.js: saveTaskData(): Tasks saved to local storage: ${myTasks.length}`);
 }
 
 // ========================================================================
@@ -944,7 +1008,7 @@ function loadTaskData() {
 
   // Render the task list
   // renderTaskList();
-  console.log(`Tasks retrieved from local storage: ${myTasks.length}`); // ${myTasks.join}
+  console.log(`popup.js: loadTaskData(): Tasks retrieved from local storage: ${myTasks.length}`); // ${myTasks.join}
 }
 
 // ========================================================================
@@ -954,6 +1018,29 @@ function sendTasksToBackground() { // send tasks data to background via Messagin
   chrome.runtime.sendMessage({ tasks: myTasks });
   console.log(`Tasks sent to background script`);
 }
+
+// ========================================================================
+function _openEditTaskPopup(task) {
+// ========================================================================
+  // Store the task data in local storage
+  // task.state = '6_inEdit';
+  task.filter_mask = 0xf5;
+  // saveTaskData();
+  localStorage.setItem('editTask', JSON.stringify(task));
+  console.log(`popup.js: _openEdit...() : Task saved to local storage: ${task}`);
+  console.log(`popup.js: _openEdit...() : TotalTimeSpent: ${task.TotalTimeSpent}`);
+  // Open the edit task popup window
+  // TODO: we need to attach  a window event handler that will notify us when edit is complete
+  //       then, we can copy content of 'editTask' into myTasks array
+  chrome.windows.create({
+    url: 'edit_task.html',
+    type: 'popup',
+    width: 400,
+    height: 300,
+  });
+
+}
+
 
 
 /*
@@ -992,4 +1079,55 @@ serviceworker.js:117 [...5ca7af4b98465ab821c5a15d75ef1152] fetching navigation r
                 …}
 [6]:
     // https://www.freecodecamp.org/news/how-to-convert-a-string-to-a-number-in-javascript/
+
+[7]: // https://stackoverflow.com/questions/15033196/using-javascript-to-check-whether-a-string-contains-japanese-characters-includi
+
+      // var containsJapanese = string.match(/[\u3400-\u9FBF]/);
+      // http://www.rikai.com/library/kanjitables/kanji_codes.unicode.shtml
+      // 3000 - 303f: Japanese-style punctuation
+      // 3040 - 309f: Hiragana
+      // 30a0 - 30ff: Katakana
+      // ff00 - ff9f: Full-width Roman characters and half-width Katakana
+      // 4e00 - 9faf: CJK unified ideographs - Common and uncommon Kanji
+      // 3400 - 4dbf: CJK unified ideographs Extension A - Rare Kanji
+
+      // https://stackoverflow.com/questions/15033196/using-javascript-to-check-whether-a-string-contains-japanese-characters-includi
+      // Examples:
+      // ロボット同士の“代理会話”だけでカップル成立!?「ロボット婚活」のメリットとは？｜FNNプライムオンライン
+      // 【受付中】セミナー開催のお知らせ「今更聞けない！認証とエンドポイント領域における最新の脅威情報～CrowdStrikeとBeyond Ident
+      // https://mail.google.com/mail/u/0/#inbox/FMfcgzGsmXDZmSZCqDvBSKhrgfGNQtdJ
+
+
+     // Use charCode function to detect japanese language. For example, (from website http://www.jpf.go.jp/j/index.html)
+
+      var a=$('a[href$="culture/new/index.html"]').text();
+        a=a+'K';
+      for(i=0;i<3;i++){ //3 as i knew it was length 3. Please use string.length
+          console.log(a.charCodeAt(i));
+        //Detect the charCode here and use break on match
+      }
+
+      //  Output : 19968 35239 75
+
+      // ------------------------------------------
+      This link :
+      http://www.rikai.com/library/kanjitables/kanji_codes.unicode.shtml
+      has UNICODE in HEX - you have to check for DECIMAL values.
+      Use : http://www.binaryhexconverter.com/hex-to-decimal-converter
+      user1428716 / Feb 22, 2013 at 22:01
+
+[8]
+      // https://html.spec.whatwg.org/multipage/forms.html#attr-label-for
+
+[9]
+      // 32 vs 64 bit integers
+      // https://www.w3schools.com/js/js_bitwise.asp
+      // https://stackoverflow.com/questions/2983206/bitwise-and-in-javascript-with-a-64-bit-integer
+      2^3        = 0000000000000000000000000000000000000000000000000000000000001000;
+      2^3 + 2^63 = 0010000000000000000000000000000000000000000000000000000000001000;
+      compare to:
+      JavaScript uses 32 bits signed integers:
+      00000000000000000000000000000101 (5)
+      11111111111111111111111111111010 (~5 = -6)
+      A signed integer uses the leftmost bit as the minus sign.
 */

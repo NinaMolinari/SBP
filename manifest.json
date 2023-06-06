@@ -1,21 +1,21 @@
 {
-    "manifest_version": 3,
-    "name":             "Keeping Tabs",
-    "version":          "1.12",
-    "description":      "Manages URL links",
+    "manifest_version":  3,
+    "name":              "Keeping Tabs",
+    "version":           "1.13",
+    "description":       "Manages URL links",
     "action": {
-      "default_popup":  "popup.html",
-      "default_title":  "Smart Links"
+       "default_popup":  "popup.html",
+       "default_title":  "Keeping Tabs"
     },
     "permissions":      [
-                          "history",
-                          "downloads",
-                          "tabs",
-                          "bookmarks",
-                          "storage",
-                          "declarativeContent"
+                         "history",
+                         "downloads",
+                         "tabs",
+                         "bookmarks",
+                         "storage",
+                         "declarativeContent"
     ],
     "background": {
-      "service_worker": "background.js"
+       "service_worker": "background.js"
     }
 }

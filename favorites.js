@@ -1,4 +1,6 @@
+// =================================================================
 // FILE: favorites.js
+// =================================================================
 
 // Getting Search block control elements
 // var searchInput       = document.getElementById('searchString');
@@ -13,10 +15,12 @@ var gFBmNodes          = [];
 var gBmCount           = 0;
 
 // ==========================================================================
-// Fucntion searchFavorites():
+// Function searchFavorites():
 // Shared between code modules by attaching to a global "Window" object:
 // see: window.searchFavorites = searchFavorites;
 // Alternatively consider exporting it as function searchFavorites(searchQuery)
+// TODO: read Cross-Extension messaging:
+//       https://developer.chrome.com/docs/extensions/mv3/messaging/#connect
 // ==========================================================================
 function searchFavorites(searchQuery) {
 

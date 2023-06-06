@@ -1,48 +1,88 @@
+// =================================================================
 // FILE: background.js
+// =================================================================
+// TODO: read Cross-Extension messaging:
+//       https://developer.chrome.com/docs/extensions/mv3/messaging/#connect
+//
 
-let numTabs                 = 0;
-let numWindows              = 0;
-let TabCountAdjustment      = 0;
-let WindowsCountAdjustment  = 0;
-let bgTasks                 = [];
+let gNumTabs                 = 0;
+let gNumWindows              = 0;
+let TabCountAdjustment       = 0;
+let WindowsCountAdjustment   = 0;
+let bgTasks                  = [];
 
 
-function _collectInfo() {
+function _collectInfo(callback) {
 
-    chrome.windows.getAll({}, function(windows) {  numWindows = windows.length; }); // {populate: true}, function(window) {
-    chrome.tabs.query({}, function(tabs) { numTabs = tabs.length;  }); // chrome.tabs.query({windowType:'normal'}, function(tabs)
-    console.log(`INFO(_collectInfo): Windows: ${numWindows}, Tabs: ${numTabs}`);
-    // console.log(`INFO(_collectInfo): AllTabs: ${AllTabs}`);
+    // chrome.windows.getAll({}, function(windows) {  gNumWindows = windows.length; }); // {populate: true}, function(window) {
+    // var myPromise =
+
+    // Trying to deal with a promise...
+    chrome.windows.getAll({populate: true}, function(windows_list) {
+        var tabs_list = [];
+        gNumWindows = windows_list.length;
+        for (var i = 0; i < gNumWindows; i++) {
+            tabs_list.concat(windows_list[i].tabs); // push(windows_list[i]);
+        }
+
+        console.log(`background.js: _collectInfo(#1)` + tabs_list);
+        if (callback) {
+            callback(tabs_list);
+            console.log(`background.js: _collectInfo(#2): ${tabs_list}`); //    ${tabs_list.join(', ')}
+        }
+    });
+
+    // myPromise.then(function(data) {
+    //     console.log(`OnPromise: Windows: ${data}`);
+    // } );// {populate: true}, function(window) {
+
+    chrome.tabs.query({}, function(tabs) { gNumTabs = tabs.length;  }); // chrome.tabs.query({windowType:'normal'}, function(tabs)
+    // console.log(`INFO(_collectInfo): Windows: ${gNumWindows}, Tabs: ${gNumTabs}`);
 }
 
 function _updateBadge() {
-    _collectInfo();
-    chrome.action.setBadgeText({text: '' + `${numWindows}:${numTabs+TabCountAdjustment}`});
+    var  mytabs_list = [];
+    _collectInfo( function(mytabs_list) {
+        console.log(`background.js: _updateBadge(#1): ${mytabs_list.length}`);
+    });
+    if (gNumWindows && gNumTabs) {
+        chrome.action.setBadgeText({text: '' + `${gNumWindows}:${gNumTabs+TabCountAdjustment}`});
+    }
+    console.log(`background.js: _updateBadge(#2): W:${gNumWindows},T:${gNumTabs+TabCountAdjustment}`);
 }
 
 //_collectInfo();
 _updateBadge();
 
 chrome.tabs.onCreated.addListener(function(tab) {
-    if ( numTabs > 0 ) TabCountAdjustment = 0;
+    // if ( gNumTabs > 0 ) TabCountAdjustment = 0;
+    console.log(`background.js:gNumTabs: ${gNumTabs}`);
+    gNumTabs +=1; // adding to tabs count ahead of promise
     _updateBadge();
+    console.log(`background.js:gNumTabs: ${gNumTabs}`);
     console.log('INFO(tabs.onCreated): New tab opened');
 });
 
 chrome.tabs.onRemoved.addListener(function(tab) {
-    TabCountAdjustment = -1;
+    //TabCountAdjustment = -1;
+    gNumTabs -=1; // subtracting from tabs count ahead of promise
     _updateBadge();
     console.log('INFO(tabs.onRemoved): Tab closed');
 });
 
 chrome.windows.onCreated.addListener(function(window) {
+    console.log(`background.js: windows.onCreated(#1): gNumWindows = ${gNumWindows}`);
+    if (gNumWindows > 1) {
+        gNumWindows += 1; // adding to windows count ahead of promise
+    }
     _updateBadge();
-    console.log('INFO(windows.onCreated): window created');
+    console.log(`background.js: windows.onCreated(#2): gNumWindows = ${gNumWindows}`);
 });
 
 chrome.windows.onRemoved.addListener(function(window) {
+    gNumWindows -= 1; // subtracting from windows count ahead of promise
     _updateBadge();
-    console.log('INFO(windows.onRemoved): Window closed');
+    console.log('background.js: windows.onRemoved(): Window closed:'+ window.document );
 });
 
 // Event listener for receiving messages from the popup script
@@ -69,13 +109,20 @@ chrome.runtime.onSuspend.addListener(bgSaveTaskData);
 chrome.runtime.onConnect.addListener(function(port) {
     if (port.name === "popup") {
         port.onDisconnect.addListener(function() {
-           console.log("bgLog: popup has been closed")
+           console.log(`background.js: port.onDisconnect(): Popup was closed: ${new Date().toString()}`);
         });
     }
 });
 
+
+chrome.runtime.onMessage.addListener(function (message) {
+    if (message.type === 'logMessage') {
+      console.log(message.message);
+    }
+});
+
 // ========================================================================
-// Function to save the task data to local storage
+// Save the tasks data to local storage
 // ========================================================================
 function bgSaveTaskData() {
     // Convert bgTasks array to JSON string
@@ -83,23 +130,34 @@ function bgSaveTaskData() {
 
     // Save the task data to local storage
     localStorage.setItem('bgSavedTasks', taskData);
-    console.log(`BG: Task saved to local storage}`);
+    console.log(`background.js: bgSaveTaskData(): Tasks saved to local storage: ${taskData.length}`);
 }
 
 // ========================================================================
-// Function to load the task data from local storage
+// Load the tasks data from local storage
 // ========================================================================
 function bgLoadTaskData() {
     // Get the task data from local storage
-    const taskData = localStorage.getItem('bgSavedTasks');
+    // const taskData = localStorage.getItem('bgSavedTasks');
 
+    // Error in event handler: ReferenceError: localStorage is not defined
+    // localStorage && localStorage.removeItem('bgSavedTasks');
+
+    const taskData = [];
+
+    if ( (typeof(localStorage) !== "undefined") && (localStorage.length) ) {
+        (taskData = localStorage.getItem('bgSavedTasks'));
+    }
+    //
     // Parse the task data from JSON string to an array
     bgTasks = JSON.parse(taskData) || [];
 
     // Render the task list
     // renderTaskList(); // in popup.js
-    console.log(`BG: Tasks retrieved from local storage: ${bgTasks.length}`); // ${bgTasks.join}
+    console.log(`background.js: bgLoadTaskData(): Tasks retrieved from local storage: ${bgTasks.length}`); // ${bgTasks.join}
 }
+
+
 
 // // ========================================================================
 // // Function to send the bgTasks array to the background script

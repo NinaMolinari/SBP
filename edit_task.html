@@ -1,0 +1,39 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <meta charset="UTF-8">
+    <title>Edit Task</title>
+    <script src="edit_task.js"></script>
+    <link rel="stylesheet" href="edit_task.css">
+</head>
+<body>
+  <h1>Edit Task</h1>
+  <mark> This feature is currently in simulation mode only!</mark>
+  <p>
+  <form id="edit-form">
+  <table>
+  <tr>
+    <td><label for="task-name">Task Name:</label></td>
+    <td><input type="text" id="task-name" name="task-name" required></td>
+  </tr>
+  <tr>
+    <td><label for="task-start-date">Task Started:</label></td>
+    <td><input type="datetime-local" id="task-start-date" name="task-date-started" required></td>
+  </tr>
+  <tr>
+    <td><label for="task-stop-time">Task Last Stopped:</label></td>
+    <td><input type="datetime-local" id="task-stop-time" name="task-time-stopped" required></td>
+  </tr>
+  <tr>
+    <td><label for="task-total-time-spent">Total time spent:</label></td>
+    <td>
+    <input type="number" id="task-total-time-spent-hr" name="task-time-spent-hr" required min="0" max="24">&nbsp;hr&nbsp;
+    <input type="number" id="task-total-time-spent-min" name="task-time-spent-min" required min="0" max="60">&nbsp;min&nbsp;
+    </td>
+  </tr>
+  </table>
+
+    <input type="submit" value="Save">
+  </form>
+</body>
+</html>
