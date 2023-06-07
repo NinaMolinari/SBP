@@ -92,6 +92,7 @@ document.addEventListener('DOMContentLoaded', function () {
       selectedTask.name = document.getElementById('task-name').value;
       var newStartTime = new Date(document.getElementById('task-start-date').value);
       var newStopTime  = new Date(document.getElementById('task-stop-time').value);
+      // var newTimerStart = new Date( '1970-01-01' );
       chrome.runtime.sendMessage({
         type: 'logMessage',
         message: `edit_task.js: onSubmit: NewStart(#7): ${newStartTime}` });
@@ -99,11 +100,12 @@ document.addEventListener('DOMContentLoaded', function () {
         type: 'logMessage',
         message: `edit_task.js: onSubmit: NewStopTime(#8): ${newStopTime}` });
       selectedTask.started = newStartTime.getTime();
+      // selectedTask.startTime =
       selectedTask.endTime = newStopTime.getTime();
 
       chrome.runtime.sendMessage({
         type: 'logMessage',
-        message: `edit_task.js: onSubmit: TimeSpent(#1): ${selectedTask.TotalTimeSpent}` });
+        message: `edit_task.js: onSubmit: TimeSpent(#before-edit): ${selectedTask.TotalTimeSpent}` });
 
       // var fElapsedHr = fElapsedMin = 0;
       var fElapsedHr  = parseInt(document.getElementById('task-total-time-spent-hr').value, 10);
@@ -111,7 +113,8 @@ document.addEventListener('DOMContentLoaded', function () {
       // const newTimeSpent = (fElapsedHr * 60 * 60 * 1000) + (fElapsedMin * 60 * 1000);
       // chrome.runtime.sendMessage({ type: 'logMessage', message: `edit_task.js: onSubmit: TimeSpent(#2): ${newTimeSpent}` });
       selectedTask.TotalTimeSpent = (fElapsedHr * 60 * 60 * 1000) + (fElapsedMin * 60 * 1000);
-      chrome.runtime.sendMessage({ type: 'logMessage', message: `edit_task.js: onSubmit: TimeSpent(#3): ${selectedTask.TotalTimeSpent}` });
+      chrome.runtime.sendMessage({ type: 'logMessage',
+          message: `edit_task.js: onSubmit: TimeSpent(#After-edit): ${selectedTask.TotalTimeSpent}` });
       // selectedTask.state = '5_mEdited';
       selectedTask.filter_mask = 0x01;
 

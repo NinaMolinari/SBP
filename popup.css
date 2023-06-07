@@ -63,6 +63,10 @@ h1 {
     width: 60px;
 }
 
+input#task-name-input {
+    width: 95%;
+}
+
 input[type="text"], input[type="email"] {
     /* width: 60px; /* 80% */
     padding: 5px;

@@ -157,6 +157,8 @@ function bgLoadTaskData() {
     console.log(`background.js: bgLoadTaskData(): Tasks retrieved from local storage: ${bgTasks.length}`); // ${bgTasks.join}
 }
 
+// Error in event handler: SyntaxError: Unexpected end of JSON input at JSON.parse (<anonymous>)
+// at bgLoadTaskData (chrome-extension://pikbbjcfacedhhkhgajpnbblgmgbnhfo/background.js:153:20)
 
 
 // // ========================================================================
