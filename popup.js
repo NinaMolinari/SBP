@@ -947,6 +947,7 @@ function _setTimerControls (task) {
     case "8_stopped":
     case "stopped":
     case "6_inEdit":
+    case "5_mEdited":
       eBtnTimerStart.disabled  = eBtnTimerPause.disabled = eBtnTimerEnd.disabled = true;
       eBtnTimerResume.disabled =  eBtnEdit.disabled = false;
       break;
