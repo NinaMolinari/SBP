@@ -832,14 +832,14 @@ function renderTaskList( ) {
 
     const taskItem = document.createElement('div');
     var stState = '';
-
+    var daysBefore = 5;
 
     var start_Of_Day = new Date();
     var end_Of_Day   = new Date();
     start_Of_Day.setUTCHours(8,0,0,0);
     end_Of_Day.setUTCHours(16,0,0,0); /* UTC endof day = 23,59,59,999 */
-    let yesterday = new Date(new Date().setDate(new Date().getDate()-1));
-
+    //let yesterday = new Date(new Date().setDate(new Date().getDate()-1));
+    let filterStartDate = new Date(new Date().setDate(new Date().getDate()-daysBefore));
 
     tTime = formatDate(task.startTime); /* .startTime, task.endTime */
     // console.log(task.endTime);
@@ -860,7 +860,9 @@ function renderTaskList( ) {
 
     // Select for tasks display only recent and paused tasks
 
-    if ( (task.startTime > yesterday) || task.state.includes('paused') || task.state.includes('running') ) { // start_Of_Day
+    if ( (task.startTime > filterStartDate) ||
+          task.state.includes('paused') ||
+          task.state.includes('running') ) { // start_Of_Day
         taskItem.textContent = `${tTime}: [${eTime}] (${stState}): ${task.name}`;
     }
     //(task.state).padEnd(8,"_")
