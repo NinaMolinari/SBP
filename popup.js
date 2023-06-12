@@ -1,7 +1,7 @@
 /*
 // =================================================================
 // FILE:        popup.html
-// DATE:        2023-06-02 5:00 am PDT
+// DATE:        2023-06-11 3:24 pm PDT
 // Copyright:   Nina Molinari 2023 (c)
 //
 // PROJECT:     "Keeping Tabs" Browser Plugin
@@ -9,9 +9,10 @@
 //              I need a way to "keep tabs" on my tasks and work time, web resources, etc.
 //              So, hence, I am building my own Tasks/Tabs/WebLinks tracker.
 //
-// VERSION:     00.01.13
+// VERSION:     00.01.14
 //
 // IMPLEMENTED:
+//              - Added Time Range for displayed tasks
 //              - Task object added new features, task schema changed
 //              -
 //
@@ -19,7 +20,7 @@
 //              6/2/23 3:00: task object schema change: elapsedTime is now TotalTimeSpent
 //
 // TODO:
-//              -       Add selection of time window for filtering displays
+//              -       * Add selection of time window for filtering displays
 //              -       Add support for cli commands in search bar...
 //              -       add option to save open tabs
 //              -       add option to edit a task
@@ -31,7 +32,8 @@
 //              -       Save / Load favorites
 //              -       Load file with custom browsing history
 //              -       ...
-//              -       data storage for subscribers
+//              -       User management : logins via Firebase?
+//              -       Implement data storage for subscribers
 // =================================================================
 */
 // DOM elements
@@ -85,6 +87,8 @@ var gTotalOpenTabs    = 0;
 var gMatchedTabs      = 0;
 var bSupplINFO        = true;
 var gTaskSchemaVer    = "1.02";
+var gDateRangeStart   = null;
+var gDateRangeEnd     = null;
 
 // ========================================================================
 function formatDate (date) {
@@ -594,6 +598,28 @@ document.addEventListener('DOMContentLoaded', function() {
       }
     });
 
+    // https://gomakethings.com/how-to-get-and-set-a-date-object-from-an-input-with-vanilla-javascript/
+    // let field = document.querySelector('#date');
+    // // Handle date changes
+    // date.addEventListener('input', function () {
+    //   // ...
+    // });
+
+    /*
+      // const fDateFrom = document.querySelector('input[type="date"]');
+      // dateControl.value = '2017-06-01';
+      // console.log(dateControl.value); // prints "2017-06-01"
+      // console.log(dateControl.valueAsNumber); // prints 1496275200000, a JavaScript timestamp (ms)
+      // let date = new Date(`${fDateFrom.value}T00:00`);
+    */
+
+    document.getElementById('filter-start-date').addEventListener('input', function (event) {
+      var fDateFrom = document.querySelector('#filter-start-date');
+      gDateRangeStart = new Date(`${fDateFrom.value}T00:00`);
+      console.log("Filter start date fDateFrom.value " + fDateFrom.value);
+      console.log("Filter start date changed to " + gDateRangeStart);
+    });
+
     _PopupInitialize();
 });// end of document.addEventListener('DOMContentLoaded', function() {});
 
@@ -826,22 +852,41 @@ function renderTaskList( ) {
   // Clear popup display area
   tableBody.innerHTML         = '';
   // divSearchResults.innerHTML  = '';
+  var daysBefore = 5; // make 5 days the default range for tasks listing
+
+  let filterStartDate = new Date(new Date().setDate(new Date().getDate()-daysBefore));
+
+  console.log("popup.js: renderTaskList(): Date range set: Starting date(#0): " + gDateRangeStart);
+
+  // UTC-7 = PDT : Pacific Daylight Time
+  // UTC-8 = PST : Pacific Standard Time
+
+  var timeOffset = filterStartDate.getTimezoneOffset();
+  var nHoursBehind = parseInt(Math.abs(timeOffset/60),10);
+  filterStartDate.setUTCHours(nHoursBehind,0,0,0);
+  // pad(parseInt(Math.abs(offset/60)), 2) + // pad(Math.abs(offset%60), 2))
+  // console.log("popup.js: renderTaskList(): Timezone offset(min): " + timeOffset);
+  // console.log("popup.js: renderTaskList(): Timezone offset(hr): " + nHoursBehind);
+  var start_Of_Day = new Date(); var end_Of_Day   = new Date();
+  start_Of_Day.setUTCHours(8,0,0,0); end_Of_Day.setUTCHours(16,0,0,0); /* UTC endof day = 23,59,59,999 */
+
+  //let yesterday = new Date(new Date().setDate(new Date().getDate()-1));
+
+  if ( (gDateRangeStart == 'Invalid Date') || (gDateRangeStart == null) ) {
+    console.log("popup.js: renderTaskList(): Starting date is bad in Date range(#1): null or <Invalid Date>");
+  }else{
+    console.log("popup.js: renderTaskList(): Date range set: Starting date(#2): " + gDateRangeStart );
+    filterStartDate = gDateRangeStart;
+  }
+  console.log("popup.js: renderTaskList(): filterStartDate = " + filterStartDate);
 
   // Render each task in the myTasks array
   mySortedTasks.forEach((task) => {
 
     const taskItem = document.createElement('div');
     var stState = '';
-    var daysBefore = 5;
 
-    var start_Of_Day = new Date();
-    var end_Of_Day   = new Date();
-    start_Of_Day.setUTCHours(8,0,0,0);
-    end_Of_Day.setUTCHours(16,0,0,0); /* UTC endof day = 23,59,59,999 */
-    //let yesterday = new Date(new Date().setDate(new Date().getDate()-1));
-    let filterStartDate = new Date(new Date().setDate(new Date().getDate()-daysBefore));
-
-    tTime = formatDate(task.startTime); /* .startTime, task.endTime */
+    tTime = formatDate(task.endTime); /* task.started, task.endTime */
     // console.log(task.endTime);
     eTime = formatElapsedTime(task.TotalTimeSpent);
 
@@ -860,7 +905,7 @@ function renderTaskList( ) {
 
     // Select for tasks display only recent and paused tasks
 
-    if ( (task.startTime > filterStartDate) ||
+    if ( (task.started > filterStartDate) ||
           task.state.includes('paused') ||
           task.state.includes('running') ) { // start_Of_Day
         taskItem.textContent = `${tTime}: [${eTime}] (${stState}): ${task.name}`;
@@ -876,9 +921,19 @@ function renderTaskList( ) {
 // Sort tasks by state
 // ========================================================================
 function _sortTaskList(tasks) {
+  _sortTasksByDate(tasks);
   return tasks.sort(function(a,b) {
     var x = a.state; var y = b.state; //var x = a[key]; var y = b[key];
     return ((x < y) ? -1 : ((x > y) ? 1 : 0));
+  });
+}
+// ========================================================================
+// Sort tasks by task.endTime
+// ========================================================================
+function _sortTasksByDate(tasks) {
+  return tasks.sort(function(a,b) {
+    var x = a.endTime; var y = b.endTime; //var
+    return ((x > y) ? -1 : ((x < y) ? 1 : 0));
   });
 }
 

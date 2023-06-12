@@ -8,13 +8,13 @@
 </head>
 <body>
   <h1>Edit Task</h1>
-  <mark> This feature is currently in simulation mode only!</mark>
+  <!-- mark> This feature is currently in simulation mode only!</mark -->
   <p>
   <form id="edit-form">
   <table>
   <tr>
-    <td><label for="task-name">Task Name:</label></td>
-    <td><input type="text" id="task-name" name="task-name" required></td>
+    <td><label for="edit_task_name_id">Task Name:</label></td>
+    <td><input type="text" id="edit_task_name_id" name="edit_task_name" class="edit_task_name" required></td>
   </tr>
   <tr>
     <td><label for="task-start-date">Task Started:</label></td>
@@ -25,9 +25,13 @@
     <td><input type="datetime-local" id="task-stop-time" name="task-time-stopped" required></td>
   </tr>
   <tr>
+    <td><label for="calculated_duration">Calculated:</label></td>
+    <td><div  id="calculated_duration" name="calculated_duration"></td>
+  </tr>
+  <tr>
     <td><label for="task-total-time-spent">Total time spent:</label></td>
     <td>
-    <input type="number" id="task-total-time-spent-hr" name="task-time-spent-hr" required min="0" max="24">&nbsp;hr&nbsp;
+    <input type="number" id="task-total-time-spent-hr" name="task-time-spent-hr" required min="0" max="1020">&nbsp;hr&nbsp;&nbsp;
     <input type="number" id="task-total-time-spent-min" name="task-time-spent-min" required min="0" max="60">&nbsp;min&nbsp;
     </td>
   </tr>

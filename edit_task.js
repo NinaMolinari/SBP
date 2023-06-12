@@ -43,7 +43,7 @@ document.addEventListener('DOMContentLoaded', function () {
     }
     */
     // Populate the form fields with the task data
-    document.getElementById('task-name').value        = selectedTask.name;
+    document.getElementById('edit_task_name_id').value        = selectedTask.name;
 
     //var szDateStr = new Date(eTask.started).toLocaleString('en-US', { hour12: false, year: 'numeric', month: 'numeric', day: 'numeric', hour: '2-digit', minute:'2-digit' });
 
@@ -72,8 +72,8 @@ document.addEventListener('DOMContentLoaded', function () {
     /*
     date: new Date().toISOString().slice(0, 10)
     The specified value "1685892405658" does not conform to the required format, "yyyy-MM-dd".
-        <label for="task-name">Task Name:</label>
-        <input type="text" id="task-name" name="task-name" required><br>
+        <label for="edit_task_name_id">Task Name:</label>
+        <input type="text" id="edit_task_name_id" name="task-name" required><br>
 
         <label for="task-start-date">Task Started:</label>
         <input type="date" id="task-start-date" name="task-date-started" required><br>
@@ -89,7 +89,7 @@ document.addEventListener('DOMContentLoaded', function () {
       event.preventDefault();
 
       // Update the task data with the form values
-      selectedTask.name = document.getElementById('task-name').value;
+      selectedTask.name = document.getElementById('edit_task_name_id').value;
       var newStartTime = new Date(document.getElementById('task-start-date').value);
       var newStopTime  = new Date(document.getElementById('task-stop-time').value);
       // var newTimerStart = new Date( '1970-01-01' );
