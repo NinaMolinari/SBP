@@ -56,6 +56,16 @@ h1 {
     margin: 5px;
     width:96%; /* 45% */
 }
+
+
+.scroll_box {
+    height: 200px;
+    overflow-y: auto;
+    /* background-color: #333;
+    color: #fff;*/
+}
+
+
 .input_search_str {
     width: 60%;
 }

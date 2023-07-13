@@ -1090,16 +1090,40 @@ function _openEditTaskPopup(task) {
   // Open the edit task popup window
   // TODO: we need to attach  a window event handler that will notify us when edit is complete
   //       then, we can copy content of 'editTask' into myTasks array
+  win_y = window.screen.height/2;   win_x = window.screen.width/2;
+
   chrome.windows.create({
     url: 'edit_task.html',
     type: 'popup',
+    top: win_y-300,
+    left: win_x-(400/2),
     width: 400,
-    height: 300,
+    height: 300
   });
 
 }
 
+/*
+window.screen.height;
+window.screen.width;
 
+globalThis.pageXOffset
+globalThis.pageYOffset
+
+chrome.runtime.onMessage.addListener(
+    (request, sender, sendResponse) => {
+        let data = JSON.parse(request);
+        chrome.windows.create({
+            url: chrome.runtime.getURL("index.html"),
+            type: "popup",
+            top: data.top,
+            left: data.left-400,
+            width: 400,
+            height: 600,
+        });
+    }
+);
+*/
 
 /*
 // ====================== ADDENDUM =================

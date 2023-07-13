@@ -147,10 +147,12 @@ function bgLoadTaskData() {
 
     if ( (typeof(localStorage) !== "undefined") && (localStorage.length) ) {
         (taskData = localStorage.getItem('bgSavedTasks'));
-    }
+    };
     //
     // Parse the task data from JSON string to an array
     bgTasks = JSON.parse(taskData) || [];
+    //Error in event handler: SyntaxError: Unexpected end of JSON input at JSON.parse (<anonymous>)
+    // at bgLoadTaskData (chrome-extension://pikbbjcfacedhhkhgajpnbblgmgbnhfo/background.js:153:20)
 
     // Render the task list
     // renderTaskList(); // in popup.js
